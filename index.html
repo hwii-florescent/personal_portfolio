@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Huy Hoang — HUD Interface</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=JetBrains+Mono:wght@300;400;500;700&family=Inter:wght@300;400;500;600&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body class="jarvis">
+
+  <!-- ══ BACKGROUND CANVAS ══ -->
+  <canvas id="bg-canvas" aria-hidden="true"></canvas>
+
+  <!-- ══ BOOT SCREEN ══ -->
+  <div id="boot-screen" aria-live="polite">
+    <div class="boot-scanline" id="boot-scanline"></div>
+    <div class="boot-content">
+      <div class="boot-logo" id="boot-logo">
+        <span class="boot-logo-brand" id="boot-brand"></span>
+        <span class="boot-logo-sub" id="boot-sub"></span>
+      </div>
+      <div class="boot-checks" id="boot-checks">
+        <div class="boot-line" id="bc-0"><span class="bc-icon">▸</span><span class="bc-text"></span></div>
+        <div class="boot-line" id="bc-1"><span class="bc-icon">▸</span><span class="bc-text"></span></div>
+        <div class="boot-line" id="bc-2"><span class="bc-icon">▸</span><span class="bc-text"></span></div>
+      </div>
+      <div class="boot-progress-wrap">
+        <div class="boot-progress-track">
+          <div class="boot-progress-bar" id="boot-bar"></div>
+        </div>
+        <span class="boot-pct" id="boot-pct">0%</span>
+      </div>
+      <div class="boot-final" id="boot-final"></div>
+    </div>
+    <div class="boot-skip" id="boot-skip">[ CLICK TO SKIP ]</div>
+  </div>
+
+  <!-- ══ HUD FRAME ══ -->
+  <div id="hud-frame" aria-hidden="true">
+    <!-- Corner brackets -->
+    <div class="corner corner-tl"></div>
+    <div class="corner corner-tr"></div>
+    <div class="corner corner-bl"></div>
+    <div class="corner corner-br"></div>
+
+    <!-- Top status bar -->
+    <header id="hud-topbar">
+      <div class="topbar-left">
+        <span class="ai-badge" id="ai-badge">◈ JARVIS</span>
+        <span class="ai-version" id="ai-version">v4.1 — STARK INDUSTRIES</span>
+      </div>
+      <div class="topbar-center">
+        <span id="hud-clock"></span>
+        <span class="sep">|</span>
+        <span id="hud-date"></span>
+      </div>
+      <div class="topbar-right">
+        <span class="status-dot" id="status-dot"></span>
+        <span class="status-label" id="status-label">SYSTEM ONLINE</span>
+        <span class="sep">|</span>
+        <span class="signal-bars">
+          <span></span><span></span><span></span><span></span>
+        </span>
+        <span class="sep">|</span>
+        <button id="theme-toggle" aria-label="Switch AI system">
+          <span id="theme-toggle-label">⇄ E.D.I.T.H</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Bottom AI dialogue bar -->
+    <footer id="hud-bottombar">
+      <span class="ai-prompt" id="ai-prompt">JARVIS ▸</span>
+      <span class="ai-dialogue" id="ai-dialogue"></span>
+      <span class="ai-cursor">█</span>
+    </footer>
+
+    <!-- Side data strips -->
+    <div class="hud-strip hud-strip-left" aria-hidden="true">
+      <div class="strip-label">BIOMETRIC</div>
+      <div class="strip-bars">
+        <div class="s-bar" style="--h:62%"></div>
+        <div class="s-bar" style="--h:88%"></div>
+        <div class="s-bar" style="--h:45%"></div>
+        <div class="s-bar" style="--h:75%"></div>
+        <div class="s-bar" style="--h:90%"></div>
+        <div class="s-bar" style="--h:55%"></div>
+      </div>
+      <div class="strip-readout">98.7%<br><small>NOMINAL</small></div>
+    </div>
+    <div class="hud-strip hud-strip-right" aria-hidden="true">
+      <div class="strip-label">SENSORS</div>
+      <div class="strip-bars">
+        <div class="s-bar" style="--h:72%"></div>
+        <div class="s-bar" style="--h:50%"></div>
+        <div class="s-bar" style="--h:95%"></div>
+        <div class="s-bar" style="--h:38%"></div>
+        <div class="s-bar" style="--h:80%"></div>
+        <div class="s-bar" style="--h:65%"></div>
+      </div>
+      <div class="strip-readout">ACTIVE<br><small>ALL CLEAR</small></div>
+    </div>
+  </div>
+
+  <!-- ══ RADIAL NAVIGATION ══ -->
+  <nav id="radial-nav" aria-label="Portfolio navigation">
+    <!-- Decorative outer rings -->
+    <div class="nav-outer-ring ring-1" aria-hidden="true"></div>
+    <div class="nav-outer-ring ring-2" aria-hidden="true"></div>
+    <div class="nav-outer-ring ring-3" aria-hidden="true"></div>
+
+    <!-- Rotating tick ring -->
+    <div class="nav-tick-ring" id="nav-tick-ring" aria-hidden="true">
+      <svg viewBox="0 0 520 520" width="520" height="520">
+        <circle cx="260" cy="260" r="255" fill="none" stroke="var(--primary)" stroke-width="1" stroke-dasharray="4 14"
+          stroke-opacity="0.55" />
+        <circle cx="260" cy="260" r="240" fill="none" stroke="var(--secondary)" stroke-width="0.5"
+          stroke-opacity="0.35" />
+      </svg>
+    </div>
+
+    <!-- Node connector lines -->
+    <svg id="nav-lines" viewBox="0 0 520 520" aria-hidden="true">
+      <!-- Lines drawn by JS -->
+    </svg>
+
+    <!-- Center — Target Reticle -->
+    <div id="nav-center">
+      <!-- Cross-and-circle targeting reticle SVG -->
+      <svg id="target-reticle" viewBox="0 0 280 280" width="280" height="280" aria-hidden="true">
+        <!-- Pulsing targeting circle around face -->
+        <circle cx="140" cy="140" r="90" fill="none" stroke="var(--accent)" stroke-width="1.2"
+          stroke-opacity="0.6" class="reticle-circle-pulse" />
+        <!-- Second inner targeting circle -->
+        <circle cx="140" cy="140" r="82" fill="none" stroke="var(--accent)" stroke-width="0.5"
+          stroke-dasharray="4 8" stroke-opacity="0.35" class="reticle-circle-inner" />
+        <!-- Outer rotating dashed ring -->
+        <circle cx="140" cy="140" r="130" fill="none" stroke="var(--primary)" stroke-width="1"
+          stroke-dasharray="8 6" stroke-opacity="0.4" class="reticle-outer" />
+
+        <!-- Cross lines — extending from circle outward only -->
+        <!-- Top -->
+        <line x1="140" y1="0" x2="140" y2="48" stroke="var(--accent)" stroke-width="1" stroke-opacity="0.5" class="crosshair-line" />
+        <line x1="138" y1="10" x2="138" y2="40" stroke="var(--accent)" stroke-width="0.4" stroke-opacity="0.2" />
+        <line x1="142" y1="10" x2="142" y2="40" stroke="var(--accent)" stroke-width="0.4" stroke-opacity="0.2" />
+        <!-- Bottom -->
+        <line x1="140" y1="232" x2="140" y2="280" stroke="var(--accent)" stroke-width="1" stroke-opacity="0.5" class="crosshair-line" />
+        <line x1="138" y1="240" x2="138" y2="270" stroke="var(--accent)" stroke-width="0.4" stroke-opacity="0.2" />
+        <line x1="142" y1="240" x2="142" y2="270" stroke="var(--accent)" stroke-width="0.4" stroke-opacity="0.2" />
+        <!-- Left -->
+        <line x1="0" y1="140" x2="48" y2="140" stroke="var(--accent)" stroke-width="1" stroke-opacity="0.5" class="crosshair-line" />
+        <line x1="10" y1="138" x2="40" y2="138" stroke="var(--accent)" stroke-width="0.4" stroke-opacity="0.2" />
+        <line x1="10" y1="142" x2="40" y2="142" stroke="var(--accent)" stroke-width="0.4" stroke-opacity="0.2" />
+        <!-- Right -->
+        <line x1="232" y1="140" x2="280" y2="140" stroke="var(--accent)" stroke-width="1" stroke-opacity="0.5" class="crosshair-line" />
+        <line x1="240" y1="138" x2="270" y2="138" stroke="var(--accent)" stroke-width="0.4" stroke-opacity="0.2" />
+        <line x1="240" y1="142" x2="270" y2="142" stroke="var(--accent)" stroke-width="0.4" stroke-opacity="0.2" />
+
+        <!-- Small gap ticks at circle edge (N/S/E/W) -->
+        <line x1="140" y1="48" x2="140" y2="56" stroke="var(--accent)" stroke-width="1.5" stroke-opacity="0.8" />
+        <line x1="140" y1="224" x2="140" y2="232" stroke="var(--accent)" stroke-width="1.5" stroke-opacity="0.8" />
+        <line x1="48" y1="140" x2="56" y2="140" stroke="var(--accent)" stroke-width="1.5" stroke-opacity="0.8" />
+        <line x1="224" y1="140" x2="232" y2="140" stroke="var(--accent)" stroke-width="1.5" stroke-opacity="0.8" />
+
+        <!-- Corner targeting brackets (top-left) -->
+        <path d="M 42 58 L 42 42 L 58 42" fill="none" stroke="var(--primary)" stroke-width="2" stroke-opacity="0.85" />
+        <!-- Corner targeting brackets (top-right) -->
+        <path d="M 222 42 L 238 42 L 238 58" fill="none" stroke="var(--primary)" stroke-width="2" stroke-opacity="0.85" />
+        <!-- Corner targeting brackets (bottom-left) -->
+        <path d="M 42 222 L 42 238 L 58 238" fill="none" stroke="var(--primary)" stroke-width="2" stroke-opacity="0.85" />
+        <!-- Corner targeting brackets (bottom-right) -->
+        <path d="M 222 238 L 238 238 L 238 222" fill="none" stroke="var(--primary)" stroke-width="2" stroke-opacity="0.85" />
+
+        <!-- Rotating tick marks ring -->
+        <g class="reticle-ticks">
+          <line x1="140" y1="8" x2="140" y2="16" stroke="var(--accent)" stroke-width="0.6" stroke-opacity="0.3" />
+          <line x1="140" y1="264" x2="140" y2="272" stroke="var(--accent)" stroke-width="0.6" stroke-opacity="0.3" />
+          <line x1="8" y1="140" x2="16" y2="140" stroke="var(--accent)" stroke-width="0.6" stroke-opacity="0.3" />
+          <line x1="264" y1="140" x2="272" y2="140" stroke="var(--accent)" stroke-width="0.6" stroke-opacity="0.3" />
+        </g>
+      </svg>
+
+      <!-- Scanning sweep line -->
+      <div id="target-scanline" aria-hidden="true"></div>
+
+      <!-- Target status labels -->
+      <div id="target-label-top" class="target-label" aria-hidden="true">
+        <span class="target-tag target-tag-confirmed">◈ TARGET CONFIRMED</span>
+      </div>
+      <div id="target-label-bottom" class="target-label" aria-hidden="true">
+        <span class="target-tag">▸ INFORMATION ACQUIRED</span>
+      </div>
+
+      <!-- Avatar -->
+      <div id="nav-avatar-ring"></div>
+      <div id="nav-avatar">
+        <img src="assets/avatar.jpeg" alt="Huy Hoang" id="avatar-img"
+          onerror="this.style.display='none'; document.getElementById('avatar-initials').style.display='flex';">
+        <div id="avatar-initials">H.H</div>
+      </div>
+    </div>
+
+    <!-- Stats Panel -->
+    <div id="stats-panel" aria-label="Profile stats">
+      <div class="stats-avatar-wrap">
+        <div class="stats-avatar-ring"></div>
+        <div class="stats-avatar">
+          <img src="assets/avatar.jpeg" alt="Huy Hoang"
+            onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+          <div class="stats-avatar-initials">H.H</div>
+        </div>
+      </div>
+      <div class="stats-info">
+        <div class="stats-name">Huy Hoang</div>
+        <div class="stats-subtitle">SOFTWARE ENGINEER &amp; AI/ML RESEARCHER</div>
+        <div class="stats-divider"></div>
+        <div class="stats-titles">
+          <div class="stats-title"><span class="stats-key">AFFILIATION</span> <span class="stats-val">Stark Industries
+              Fan</span></div>
+          <div class="stats-title"><span class="stats-key">HEROES</span> <span class="stats-val">Iron Man &amp;
+              Spider-Man</span></div>
+          <div class="stats-title"><span class="stats-key">AI SYS</span> <span class="stats-val">J.A.R.V.I.S &amp;
+              E.D.I.T.H</span></div>
+          <div class="stats-title"><span class="stats-key">MOTTO</span> <span class="stats-val stats-val-quote">"I am
+              Iron Man."</span></div>
+        </div>
+        <div class="stats-actions">
+          <a href="assets/Huy_Hoang_Resume.pdf" target="_blank" class="stats-btn stats-btn-primary">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+              <polyline points="7 10 12 15 17 10" />
+              <line x1="12" y1="15" x2="12" y2="3" />
+            </svg>
+            RESUME
+          </a>
+          <button class="stats-btn stats-btn-ghost" onclick="navigateTo('contact')">
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path
+                d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.18 6.18l1.97-1.97a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+            </svg>
+            CONTACT
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6 Orbital nodes — positioned via CSS custom property --i -->
+    <button class="nav-node" data-section="profile" style="--i:0" aria-label="Profile">
+      <div class="node-inner">
+        <div class="node-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <circle cx="12" cy="8" r="4" />
+            <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" />
+          </svg>
+        </div>
+        <span class="node-label">PROFILE</span>
+      </div>
+      <div class="node-dot"></div>
+    </button>
+
+    <button class="nav-node" data-section="skills" style="--i:1" aria-label="Skills">
+      <div class="node-inner">
+        <div class="node-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+          </svg>
+        </div>
+        <span class="node-label">SKILLS</span>
+      </div>
+      <div class="node-dot"></div>
+    </button>
+
+    <button class="nav-node" data-section="experience" style="--i:2" aria-label="Experience">
+      <div class="node-inner">
+        <div class="node-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <rect x="2" y="7" width="20" height="14" rx="2" />
+            <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" />
+            <line x1="12" y1="12" x2="12" y2="16" />
+            <line x1="10" y1="14" x2="14" y2="14" />
+          </svg>
+        </div>
+        <span class="node-label">EXPERIENCE</span>
+      </div>
+      <div class="node-dot"></div>
+    </button>
+
+    <button class="nav-node" data-section="projects" style="--i:3" aria-label="Projects">
+      <div class="node-inner">
+        <div class="node-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+          </svg>
+        </div>
+        <span class="node-label">PROJECTS</span>
+      </div>
+      <div class="node-dot"></div>
+    </button>
+
+    <button class="nav-node" data-section="leadership" style="--i:4" aria-label="Leadership">
+      <div class="node-inner">
+        <div class="node-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+            <circle cx="9" cy="7" r="4" />
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+          </svg>
+        </div>
+        <span class="node-label">LEADERSHIP</span>
+      </div>
+      <div class="node-dot"></div>
+    </button>
+
+    <button class="nav-node" data-section="contact" style="--i:5" aria-label="Contact">
+      <div class="node-inner">
+        <div class="node-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path
+              d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.18 6.18l1.97-1.97a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+          </svg>
+        </div>
+        <span class="node-label">CONTACT</span>
+      </div>
+      <div class="node-dot"></div>
+    </button>
+  </nav>
+
+  <!-- ══ CONTENT PANEL ══ -->
+  <aside id="content-panel" aria-label="Portfolio content" role="region">
+    <div id="panel-header">
+      <div class="panel-section-tag" id="panel-tag">◈</div>
+      <h2 class="panel-title" id="panel-title">INITIALIZING</h2>
+      <div class="panel-scan-bar"></div>
+      <button id="panel-close" aria-label="Close panel">✕</button>
+    </div>
+    <div id="panel-body">
+      <!-- Content injected by JS -->
+    </div>
+  </aside>
+
+  <!-- ══ HINT TEXT ══ -->
+  <div id="hint-text" aria-hidden="true">
+    <span class="hint-label">CLICK A MODULE &nbsp;&mdash;&nbsp; OR SCROLL TO BEGIN</span>
+    <div class="hint-arrows">
+      <span class="hint-arr arr-1">&rsaquo;</span>
+      <span class="hint-arr arr-2">&rsaquo;</span>
+      <span class="hint-arr arr-3">&rsaquo;</span>
+    </div>
+  </div>
+
+  <!-- ══ SCRIPTS ══ -->
+  <script src="script.js"></script>
+</body>
+
+</html>
