@@ -634,6 +634,11 @@ function navigateTo(section) {
 
   // Shift nav to the left
   const nav = document.getElementById('radial-nav');
+  const navOrder = ['profile', 'skills', 'experience', 'projects', 'leadership', 'contact'];
+  const navIndex = navOrder.indexOf(section);
+  // Node 0 starts at the right-hand focus position. Rotate the orbit in the
+  // opposite direction so the selected node always takes that position.
+  nav.style.setProperty('--nav-rotation', `${navIndex * -60}deg`);
   nav.classList.add('nav-shifted');
   // Hide hint text when a module is open
   document.getElementById('hint-text')?.classList.remove('visible');
@@ -664,6 +669,7 @@ function closePanel() {
   document.body.classList.remove('panel-open');
   document.querySelectorAll('.nav-node').forEach(n => n.classList.remove('active'));
   document.getElementById('radial-nav').classList.remove('nav-shifted');
+  document.getElementById('radial-nav').style.setProperty('--nav-rotation', '0deg');
   currentSection = null;
   updateScrollProgress();
   // Restore hint text
