@@ -641,6 +641,11 @@ function navigateTo(section) {
   // Render panel content
   renderPanel(section);
 
+  // A panel keeps the same scroll container between sections. Reset it so a
+  // newly rendered long section never inherits the previous section's offset.
+  const panelBody = document.getElementById('panel-body');
+  if (panelBody) panelBody.scrollTop = 0;
+
   // Open panel
   const panel = document.getElementById('content-panel');
   panel.classList.add('open');
@@ -1037,15 +1042,11 @@ document.addEventListener('DOMContentLoaded', () => {
     else navigateTo(target);
   }
 
-  // Wheel: works everywhere including inside panel body
+  // Wheel over the panel belongs to the panel's own scroll container. Do not
+  // turn a boundary wheel event into section navigation: that made long
+  // sections jump unpredictably and opened the next section at a stale offset.
   window.addEventListener('wheel', e => {
-    // If panel body has scrollable content and is not at boundary, let it scroll
-    const pb = e.target.closest('#panel-body');
-    if (pb) {
-      const atTop = pb.scrollTop <= 0;
-      const atBot = pb.scrollTop + pb.clientHeight >= pb.scrollHeight - 2;
-      if ((e.deltaY < 0 && !atTop) || (e.deltaY > 0 && !atBot)) return;
-    }
+    if (e.target.closest('#content-panel')) return;
     e.preventDefault();
     scrollNav(e.deltaY > 0 ? 1 : -1);
   }, { passive: false });
@@ -1054,14 +1055,9 @@ document.addEventListener('DOMContentLoaded', () => {
   let touchStartY = 0;
   window.addEventListener('touchstart', e => { touchStartY = e.touches[0].clientY; }, { passive: true });
   window.addEventListener('touchend', e => {
+    if (e.target.closest('#content-panel')) return;
     const dy = touchStartY - e.changedTouches[0].clientY;
     if (Math.abs(dy) > 40) {
-      const pb = e.target.closest('#panel-body');
-      if (pb) {
-        const atTop = pb.scrollTop <= 0;
-        const atBot = pb.scrollTop + pb.clientHeight >= pb.scrollHeight - 2;
-        if ((dy < 0 && !atTop) || (dy > 0 && !atBot)) return;
-      }
       scrollNav(dy > 0 ? 1 : -1);
     }
   }, { passive: true });

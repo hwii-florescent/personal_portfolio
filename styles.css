@@ -744,7 +744,9 @@ button {
   display: grid;
   place-items: center;
   pointer-events: none;
-  transition: transform 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s ease;
+  transform-origin: center center;
+  will-change: transform, opacity;
+  transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.45s ease;
 }
 
 #radial-nav.hidden {
@@ -752,9 +754,12 @@ button {
   pointer-events: none;
 }
 
-/* When a section is active, shift nav to centre of the left gap */
+/* When a section is active, zoom the selected module and move the HUD into
+   the space beside the content panel. The panel remains above the HUD so its
+   text and controls are always unobstructed. */
 #radial-nav.nav-shifted {
-  transform: translateX(-28.5vw) scale(0.62);
+  transform: translate3d(-30vw, 0, 0) scale(0.68);
+  opacity: 0.92;
 }
 
 /* Outer decorative rings */
@@ -1350,7 +1355,7 @@ body.jarvis .stats-avatar-initials {
 /* When nav is shifted, make the active node even bigger */
 .nav-shifted .nav-node.active {
   transform:
-    rotate(calc(var(--i) * 60deg)) translateX(var(--radius-orbit)) rotate(calc(var(--i) * -60deg)) scale(1.35);
+    rotate(calc(var(--i) * 60deg)) translateX(var(--radius-orbit)) rotate(calc(var(--i) * -60deg)) scale(1.65);
   box-shadow: 0 0 32px var(--accent), inset 0 0 24px rgba(0, 229, 255, 0.1);
   border-color: var(--accent);
 }
@@ -1452,14 +1457,14 @@ body.jarvis .stats-avatar-initials {
   pointer-events: all;
 
   opacity: 0;
-  transform: translateX(30px);
+  transform: translate3d(30px, 0, 0) scale(0.985);
   visibility: hidden;
-  transition: opacity 0.38s ease, transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1), visibility 0.38s;
+  transition: opacity 0.45s ease, transform 0.55s cubic-bezier(0.22, 1, 0.36, 1), visibility 0.45s;
 }
 
 #content-panel.open {
   opacity: 1;
-  transform: translateX(0);
+  transform: translate3d(0, 0, 0) scale(1);
   visibility: visible;
 }
 
@@ -1531,7 +1536,8 @@ body.jarvis .stats-avatar-initials {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 20px;
+  padding: 20px 20px 36px;
+  overscroll-behavior: contain;
   scrollbar-width: thin;
   scrollbar-color: var(--primary) transparent;
 }
@@ -2092,7 +2098,7 @@ body.jarvis .skill-tag:hover {
 
   /* Panel body: tighter padding */
   #panel-body {
-    padding: 14px;
+    padding: 14px 14px 28px;
   }
 }
 
