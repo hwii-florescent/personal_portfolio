@@ -5,62 +5,57 @@
    ═══════════════════════════════════════════════════════════════ */
 const DATA = {
   name: 'Huy Hoang',
-  bio: "Builder who turns ambiguous problems into robust systems. Shipped infra and APIs on Kubernetes with WSO2, automated CI/CD, explored 3D vision and multimodal ML in agricultural sensing. I like fast feedback loops, readable code, and measurable impact.",
-  bio2: "Outside of work I mentor peers, contribute to hackathons, and learn by building. Currently exploring lightweight agent workflows on Bedrock and FastAPI.",
+  bio: "Software engineer building reliable systems and agentic tools across Go, Python, cloud infrastructure, and applied ML. At Uber, I work on experimentation platforms, zero-downtime migrations, MCP integrations, and LLM-assisted review workflows.",
+  bio2: "Outside of work I mentor peers, lead engineering teams, and learn by building. I am especially interested in developer tools, production ML systems, and practical AI that makes complex workflows easier to understand.",
   resume: 'assets/Huy_Hoang_Resume.pdf',
   avatar: 'assets/avatar.jpeg',
 
-  roles: ['Software Engineer', 'Hackathon Winner', 'AI Infra & Cloud', 'AI/ML Research'],
+  roles: ['Software Engineer', 'Hackathon Winner', 'AI Systems Builder', 'Cloud Infrastructure', 'ML Researcher'],
 
   education: {
     school: 'University of Florida',
     degree: 'B.S. in Computer Engineering',
-    gpa: '3.88 / 4.0',
+    gpa: '3.9 / 4.0',
     grad: 'May 2027',
     location: 'Gainesville, FL',
   },
 
   contact: [
     { icon: '✉', label: 'huyhoang.developer@gmail.com', href: 'mailto:huyhoang.developer@gmail.com', copy: 'huyhoang.developer@gmail.com' },
-    { icon: '✉', label: 'hghptcnn@gmail.com', href: 'mailto:hghptcnn@gmail.com', copy: 'hghptcnn@gmail.com' },
     { icon: '☎', label: '(352) 235-4466', href: 'tel:+13522354466', copy: '(352) 235-4466' },
     { icon: '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433a2.062 2.062 0 0 1-2.063-2.065 2.064 2.064 0 1 1 2.063 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>', label: 'linkedin.com/in/huyhoanggia', href: 'https://linkedin.com/in/huyhoanggia', copy: null },
     { icon: '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23A11.509 11.509 0 0 1 12 5.803c1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576C20.566 21.797 24 17.3 24 12c0-6.627-5.373-12-12-12z"/></svg>', label: 'github.com/hwii-florescent', href: 'https://github.com/hwii-florescent', copy: null },
+    { icon: '↗', label: 'huyhg.dev', href: 'https://huyhg.dev', copy: null },
   ],
 
   skills: [
-    { cat: 'LANGUAGES', items: ['Python', 'Bash', 'C++', 'Java', 'SQL', 'Go', 'TypeScript', 'JavaScript', 'Groovy Script'] },
-    { cat: 'FRAMEWORKS', items: ['React', 'React Native', 'Node.js', 'Flask', 'Spring', 'FastAPI', 'LangChain'] },
-    { cat: 'DEVELOPER TOOLS', items: ['Git', 'Docker', 'Kubernetes', 'AWS', 'Terraform', 'Jenkins', 'MongoDB', 'DynamoDB'] },
-    { cat: 'LIBRARIES', items: ['TensorFlow', 'PyTorch', 'OpenCV', 'COLMAP', 'pandas', 'NumPy', 'Matplotlib'] },
+    { cat: 'LANGUAGES', items: ['Python', 'Go', 'C++', 'Java', 'Shell', 'SQL', 'Protobuf', 'TypeScript', 'JavaScript'] },
+    { cat: 'FRAMEWORKS', items: ['FastAPI', 'Flask', 'Spring', 'Node.js', 'React Native', 'React'] },
+    { cat: 'DEVELOPER TOOLS', items: ['AWS', 'Terraform', 'Kubernetes', 'Kafka', 'MySQL', 'Docker', 'Jenkins', 'OpenSearch', 'Cadence'] },
+    { cat: 'AI/ML & LIBRARIES', items: ['Model Context Protocol (MCP)', 'LangChain', 'PyTorch', 'TensorFlow', 'OpenCV', 'NumPy', 'pandas', 'COLMAP'] },
     { cat: 'CERTIFICATIONS', items: ['NVIDIA Fundamentals of Deep Learning'] },
   ],
 
   experience: [
     {
       role: 'Software Engineering Intern',
-      company: 'Uber (Incoming)',
-      dates: 'May 2026 – Aug 2026',
+      company: 'Uber',
+      dates: 'May 2026 – Jul 2026',
       bullets: [
-        'Incoming for the Summer 2026 Software Engineering internship',
+        'Led search improvements for an A/B experimentation platform end-to-end, engineering OpenSearch-native sort and filter on Go gRPC endpoints for 120k+ experiments with 27k+ searches/day',
+        'Ran a zero-downtime schema migration in Go across Protobuf, MySQL, Kafka, and OpenSearch, dual-writing on the live path and backfilling 120k+ production experiments through idempotent Cadence workflows at 99.8% completion',
+        'Built a Go service exposing 7 experiment-management tools over Model Context Protocol (MCP), integrating it into an agentic debugging pipeline for 1k+ services running experiments',
+        'Architected a Python LLM reviewer for A/B experiment configs across 500 diffs/day, cutting agent context by 50% and measuring 94% precision and 86% recall with an evaluation harness',
       ],
     },
     {
       role: 'Machine Learning Research Assistant',
-      company: 'UF — Agriculture Precision Lab',
-      dates: 'Sep 2024 – Present',
+      company: 'University of Florida — AI Lab',
+      dates: 'Sep 2024 – Sep 2025',
       bullets: [
-        'Elevated feature match reliability in dense foliage using GPU-accelerated models, improving multi-view tracking stability',
-        'Consolidated per-frame COLMAP reconstructions into a clean field-scale model to improve alignment and downstream analysis',
-        'Densified canopy point clouds with monocular depth, improving completeness to over 90% for accurate volume calculation',
-      ],
-    },
-    {
-      role: 'Teaching Assistant',
-      company: 'UF (Computer Organization & Fundamentals Programming 2)',
-      dates: 'Aug 2024 – Present',
-      bullets: [
-        'Led mini-lectures and structured office hours for 50+ students; section grades averaged 15% higher than other section',
+        'Developed GPU-accelerated PyTorch pipelines for dense feature matching, enabling high-throughput 3D inference',
+        'Architected a distributed pipeline consolidating multi-view 3D reconstructions into a unified field-scale model',
+        'Applied monocular depth estimation to densify point clouds, achieving 90%+ data completeness for volumetric analysis',
       ],
     },
     {
@@ -68,18 +63,9 @@ const DATA = {
       company: 'FPT Corporation',
       dates: 'May 2025 – Aug 2025',
       bullets: [
-        'Integrated 120+ services using WSO2 on Kubernetes, reducing cross-service failures by 20% and improving system reliability',
-        'Architected Java WSO2 handlers for encryption/decryption, reducing overhead and improving gateway throughput by 25%',
-        'Engineered Java REST APIs with WSO2 APIM mediation and policies, improving request accuracy to 98% and reduce rework',
-      ],
-    },
-    {
-      role: 'Software Engineering Fellow',
-      company: 'Uber',
-      dates: 'Feb 2025 – Aug 2025',
-      bullets: [
-        'Selected for Uber Career Prep Fellowship with a 2.3% acceptance rate by demonstrating data structures and algorithm skills',
-        'Accelerated algorithmic proficiency by working with Uber engineers 1:1 to solve 70+ technical interview problems',
+        'Implemented RESTful APIs in Java Spring Boot with WSO2 mediation policies, deployed with AWS EC2 and Docker, achieving 98% request accuracy and improving response time by 20ms',
+        'Configured and integrated 12+ enterprise microservices using WSO2 API Gateway on Kubernetes, reducing cross-service failures by 20% and increasing production resilience',
+        'Developed custom Java WSO2 handlers for payload encryption/decryption and token validation using JWT and OAuth2, improving gateway throughput by 25%',
       ],
     },
     {
@@ -87,30 +73,56 @@ const DATA = {
       company: 'FPT Information System',
       dates: 'May 2024 – Aug 2024',
       bullets: [
-        'Automated distributed cloud infrastructure on AWS EKS with Terraform + GitOps, boosting provisioning efficiency by 30%',
-        'Built CI/CD with Jenkins + Docker, enabling version rollbacks and cutting deployment time by 90% across 3 environments',
-        'Deployed Prometheus monitoring, reducing crash rate by 30% and improving bug detection speed by 40% via real-time alerts',
-        'Programmed a Bash script to standardize configs across 20+ AWS EC2 instances, reducing setup time from 2 hrs to 15 min',
+        'Automated AWS EKS infrastructure provisioning with Terraform and GitOps, improving deployment efficiency by 30%',
+        'Built CI/CD pipelines with Jenkins and Docker, enabling instant rollbacks and cutting deployment time by 90%',
+        'Deployed Prometheus monitoring across 20+ EC2 instances, cutting network setup from 2h to 15min and crash rates by 30%',
       ],
     },
     {
-      role: 'AI/ML Research Assistant',
-      company: 'Hanoi University of Industry',
-      dates: 'Mar 2023 – Aug 2023',
+      role: 'Teaching Assistant',
+      company: 'University of Florida (Computer Organization & Fundamentals Programming 2)',
+      dates: 'Aug 2024 – Present',
       bullets: [
-        'Co-authored peer-reviewed paper on AI + blockchain in forestry management',
-        'Drone/IoT early warning system: 60% faster wildfire detection',
+        'Led mini-lectures and structured office hours for 50+ students; section grades averaged 15% higher than other section',
       ],
     },
   ],
 
   projects: [
     {
-      name: "Horus' Eyes",
-      award: '🏆 1st Place — Best Use of Terraform',
-      desc: 'AI assistive tool for real-time object and text detection. End-to-end cloud deployment with infrastructure-as-code.',
-      tech: ['YOLOv8', 'DPT', 'Terraform', 'Python'],
+      name: "Horus’ Eyes AI Platform",
+      award: '🏆 1st Place — Best Use of Terraform (SwampHacks)',
+      desc: 'AI assistive platform for visually impaired users, with automated cloud infrastructure and a low-latency real-time inference pipeline.',
+      tech: ['Terraform', 'AWS', 'YOLOv8', 'Flask', 'Docker', 'AWS Bedrock'],
       github: 'https://github.com/Dat-cool-repo/Horus', demo: null,
+    },
+    {
+      name: 'Context-Aware LLM Application',
+      award: null,
+      desc: 'Generative AI application with optimized state and memory management for accurate multi-turn conversations without latency degradation.',
+      tech: ['LangChain', 'AWS Bedrock', 'Python', 'FastAPI', 'Docker'],
+      github: 'https://github.com/hwii-florescent/aws-bedrock-chatbot', demo: null,
+    },
+    {
+      name: 'Crave',
+      award: null,
+      desc: 'Native social food discovery prototype for sharing restaurant visits, dish ratings, and cuisine rankings with ordering, reservations, and ride integrations.',
+      tech: ['SwiftUI', 'Kotlin', 'Jetpack Compose', 'Material 3'],
+      github: 'https://github.com/hwii-florescent/crave', demo: null,
+    },
+    {
+      name: 'Perch',
+      award: null,
+      desc: 'Personal AI IDE and agent app with a WebSocket server, headless Claude Code runner, terminal manager, and shared web/desktop client architecture.',
+      tech: ['TypeScript', 'Node.js', 'WebSockets', 'SQLite', 'Rust'],
+      github: 'https://github.com/hwii-florescent/perch', demo: null,
+    },
+    {
+      name: 'Hower',
+      award: null,
+      desc: 'Time management system that helps users track and manage how they spend their time through a Flask backend and Electron desktop application.',
+      tech: ['Python', 'Flask', 'SQLAlchemy', 'Electron'],
+      github: 'https://github.com/hwii-florescent/hower', demo: null,
     },
     {
       name: 'Search & Rescue AI',
@@ -118,13 +130,6 @@ const DATA = {
       desc: 'Mobile app with voice-activated incident reporting, GPS tracking, and real-time dispatch coordination.',
       tech: ['React Native', 'FastAPI', 'AWS DynamoDB', 'S3', 'Whisper'],
       github: 'https://github.com/hwii-florescent/shellhacks24', demo: null,
-    },
-    {
-      name: 'AWS Bedrock Chatbot',
-      award: null,
-      desc: 'Conversational AI with lightweight session memory and context-aware responses using managed LLM infrastructure.',
-      tech: ['LangChain', 'AWS Bedrock', 'FastAPI', 'Python'],
-      github: 'https://github.com/hwii-florescent/aws-bedrock-chatbot', demo: null,
     },
   ],
 
@@ -145,9 +150,9 @@ const DATA = {
     jarvis: {
       idle: ['STANDING BY, SIR.', 'ALL SYSTEMS NOMINAL.', 'AWAITING YOUR COMMAND.', 'POWER LEVELS: OPTIMAL.'],
       profile: ['ACCESSING BIOGRAPHICAL DATA — SUBJECT: HUY HOANG.', 'CAREER TRAJECTORY ANALYSIS: EXCEPTIONAL.', 'THREAT ASSESSMENT: HIGHLY CAPABLE.'],
-      skills: ['CROSS-REFERENCING KNOWN TECHNOLOGY STACK — 18 SYSTEMS IDENTIFIED.', 'SKILL MATRIX CALIBRATION COMPLETE.', 'RECOMMEND IMMEDIATE DEPLOYMENT.'],
-      experience: ['SECURITY CLEARANCE VERIFIED. INTEL FILES DECRYPTED.', 'CAREER TIMELINE RETRIEVED FROM ENCRYPTED ARCHIVES.', 'MISSION LOG: SIX SUCCESSFUL ENGAGEMENTS.'],
-      projects: ['OPERATION FILES RETRIEVED. THREE ACTIVE DEVELOPMENT PROJECTS.', 'ANALYZING COMBAT EFFECTIVENESS OF EACH DEPLOYMENT.'],
+      skills: ['CROSS-REFERENCING KNOWN TECHNOLOGY STACK — 32 SYSTEMS IDENTIFIED.', 'SKILL MATRIX CALIBRATION COMPLETE.', 'RECOMMEND IMMEDIATE DEPLOYMENT.'],
+      experience: ['SECURITY CLEARANCE VERIFIED. INTEL FILES DECRYPTED.', 'CAREER TIMELINE RETRIEVED FROM ENCRYPTED ARCHIVES.', 'MISSION LOG: FIVE SUCCESSFUL ENGAGEMENTS.'],
+      projects: ['OPERATION FILES RETRIEVED. TWO ACTIVE DEVELOPMENT PROJECTS.', 'ANALYZING COMBAT EFFECTIVENESS OF EACH DEPLOYMENT.'],
       leadership: ['COMMAND STRUCTURE ANALYSIS INITIATED.', 'SUBJECT DEMONSTRATES STRONG LEADERSHIP METRICS.'],
       contact: ['OPENING SECURE COMMUNICATION CHANNELS.', 'ENCRYPTION: ACTIVE. READY FOR TRANSMISSION.'],
     },
@@ -155,8 +160,8 @@ const DATA = {
       idle: ["YEAH, I'M HERE.", 'EDITH ONLINE. TRACKING.', 'SYSTEMS GOOD. WHAT DO YOU NEED?', 'KEEP IT TOGETHER, PETER.'],
       profile: ['PULLING UP EVERYTHING I HAVE ON HUY HOANG.', "OKAY SO... THAT'S A PRETTY IMPRESSIVE GPA.", 'STARK WOULD APPROVE. I THINK.'],
       skills: ['RUNNING CAPABILITY SCAN — HONESTLY, THAT IS A LOT OF SKILLS.', "FLAGGING: KUBERNETES, PYTORCH, TERRAFORM — HIGH VALUE ASSETS.", "PETER WOULD'VE NEEDED EDITH FOR THIS."],
-      experience: ['ACCESSING EMPLOYMENT HISTORY — SIX ENTRIES FOUND.', "OKAY THAT 90% CI/CD IMPROVEMENT IS WILD.", 'CROSS-REFERENCING WITH KNOWN ENGINEERING BENCHMARKS.'],
-      projects: ['BROWSING PROJECT DATABASE — NICE WORK ON THE TERRAFORM PRIZE.', "FLAGGING: YOLO INTEGRATION — THAT'S STARK-LEVEL STUFF.", 'THREE NOTABLE BUILDS IDENTIFIED.'],
+      experience: ['ACCESSING EMPLOYMENT HISTORY — FIVE ENTRIES FOUND.', "OKAY THAT 90% CI/CD IMPROVEMENT IS WILD.", 'CROSS-REFERENCING WITH KNOWN ENGINEERING BENCHMARKS.'],
+      projects: ['BROWSING PROJECT DATABASE — NICE WORK ON THE TERRAFORM PRIZE.', "FLAGGING: YOLO INTEGRATION — THAT'S STARK-LEVEL STUFF.", 'TWO NOTABLE BUILDS IDENTIFIED.'],
       leadership: ['CHECKING FOR COMMAND EXPERIENCE — YEP, FOUND IT.', 'LEADERSHIP METRICS: ABOVE AVERAGE. OBVIOUSLY.'],
       contact: ["OPENING COMMS. DON'T MAKE ME REGRET THIS.", 'SECURE LINE ESTABLISHED. TRY NOT TO MESS IT UP.'],
     },
