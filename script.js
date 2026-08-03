@@ -86,6 +86,24 @@ const DATA = {
         'Led mini-lectures and structured office hours for 50+ students; section grades averaged 15% higher than other section',
       ],
     },
+    {
+      role: 'Software Engineering Fellow',
+      company: 'Uber',
+      dates: 'Feb 2025 – Aug 2025',
+      bullets: [
+        'Selected for Uber Career Prep Fellowship with a 2.3% acceptance rate by demonstrating data structures and algorithm skills',
+        'Accelerated algorithmic proficiency by working with Uber engineers 1:1 to solve 70+ technical interview problems',
+      ],
+    },
+    {
+      role: 'AI/ML Research Assistant',
+      company: 'Hanoi University of Industry',
+      dates: 'Mar 2023 – Aug 2023',
+      bullets: [
+        'Co-authored peer-reviewed paper on AI + blockchain in forestry management',
+        'Built a drone/IoT early warning system that enabled 60% faster wildfire detection',
+      ],
+    },
   ],
 
   projects: [
