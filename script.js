@@ -5,6 +5,8 @@
    ═══════════════════════════════════════════════════════════════ */
 const DATA = {
   name: 'Huy Hoang',
+  focus: 'Cloud Infrastructure',
+  orientation: 'Software Engineer / AI/ML Oriented',
   bio: "Software engineer building reliable systems and agentic tools across Go, Python, cloud infrastructure, and applied ML. At Uber, I work on experimentation platforms, zero-downtime migrations, MCP integrations, and LLM-assisted review workflows.",
   bio2: "Outside of work I mentor peers, lead engineering teams, and learn by building. I am especially interested in developer tools, production ML systems, and practical AI that makes complex workflows easier to understand.",
   resume: 'assets/Huy_Hoang_Resume.pdf',
@@ -203,7 +205,10 @@ let scrollInputCancelled = false;
 let lastScrollInputAt = 0;
 let scrollInputQuietTimer = 0;
 let targetingTimer = 0;
-const SCROLL_INPUT_QUIET_WINDOW = 160;
+// Trackpad momentum arrives as a stream of wheel events. We cannot cancel the
+// operating system's gesture, but we can drain that stream until it has been
+// quiet for 50ms before accepting a fresh gesture.
+const SCROLL_INPUT_QUIET_WINDOW = 50;
 
 // Track which themes have been booted (full boot sequence)
 let jarvisBooted = false;
@@ -262,7 +267,7 @@ class HUDCanvas {
   getPalette() {
     return currentTheme === 'edith'
       ? { red: 0x18d9e6, redSoft: 0x0b7280, cyan: 0xb7ffff, blue: 0x47e8ff, gold: 0x9bf6ff }
-      : { red: 0xff3d2e, redSoft: 0x8e1d22, cyan: 0x8ff9ff, blue: 0x2ac7e8, gold: 0xf2c75f };
+      : { red: 0xd62824, redSoft: 0x74151a, cyan: 0x8ff9ff, blue: 0x2ac7e8, gold: 0xf2c75f };
   }
 
   trackMaterial(material, jarvis, edith = jarvis) {
@@ -299,6 +304,15 @@ class HUDCanvas {
     return ring;
   }
 
+  makeArc(radius, start, end, jarvis, edith = jarvis, opacity = 0.62, segments = 72, z = 0, dashed = false) {
+    const points = [];
+    for (let i = 0; i <= segments; i++) {
+      const angle = start + (end - start) * (i / segments);
+      points.push([Math.cos(angle) * radius, Math.sin(angle) * radius, z]);
+    }
+    return this.makeLine(points, jarvis, edith, opacity, dashed);
+  }
+
   makeCurve(points, jarvis, edith = jarvis, opacity = 0.7) {
     const { THREE } = this;
     const curve = new THREE.CatmullRomCurve3(
@@ -319,9 +333,13 @@ class HUDCanvas {
     });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.8));
     this.renderer.setSize(window.innerWidth, window.innerHeight, false);
-    this.renderer.setClearColor(0x020609, 0.96);
+    this.renderer.setClearColor(0x020609, 0.12);
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    this.renderer.toneMappingExposure = 1.16;
 
     this.scene = new THREE.Scene();
+    this.scene.fog = new THREE.FogExp2(0x020609, 0.026);
     this.camera = new THREE.PerspectiveCamera(34, window.innerWidth / Math.max(1, window.innerHeight), 0.1, 100);
     this.camera.position.set(0, 0, 15);
     this.camera.lookAt(0, 0, 0);
@@ -354,10 +372,12 @@ class HUDCanvas {
       bevelThickness: 0.06,
     });
     visorGeometry.translate(0, 0, -1.2);
-    const visorMaterial = this.trackMaterial(new THREE.MeshBasicMaterial({
+    const visorMaterial = this.trackMaterial(new THREE.MeshStandardMaterial({
       color: 0x07161d,
       transparent: true,
-      opacity: 0.36,
+      opacity: 0.13,
+      metalness: 0.24,
+      roughness: 0.3,
       side: THREE.DoubleSide,
       depthWrite: false,
     }), 0x07161d, 0x061b22);
@@ -371,6 +391,39 @@ class HUDCanvas {
     );
     visorEdges.renderOrder = -4;
     this.stage.add(visorEdges);
+
+    // Low-profile 3D armor ribs catch the red/cyan point lights as the viewer
+    // moves, while the detailed bitmap beneath supplies the physical texture.
+    const hardwareGroup = new THREE.Group();
+    const armorMaterial = this.trackMaterial(new THREE.MeshStandardMaterial({
+      color: 0x17191c,
+      metalness: 0.92,
+      roughness: 0.25,
+    }), 0x17191c, 0x102126);
+    const seamMaterial = this.trackMaterial(new THREE.MeshStandardMaterial({
+      color: palette.red,
+      emissive: palette.red,
+      emissiveIntensity: 1.4,
+      metalness: 0.5,
+      roughness: 0.3,
+    }), palette.red, 0x31dce9);
+    seamMaterial.userData.themeEmissive = true;
+    [
+      [-4.8, 4.28, 2.55, 0.13, -0.08], [-1.72, 4.55, 2.4, 0.16, -0.02],
+      [1.72, 4.55, 2.4, 0.16, 0.02], [4.8, 4.28, 2.55, 0.13, 0.08],
+      [-4.65, -3.98, 2.75, 0.2, 0.12], [0, -4.38, 3.35, 0.3, 0],
+      [4.65, -3.98, 2.75, 0.2, -0.12],
+    ].forEach(([x, y, width, height, rotation]) => {
+      const rib = new THREE.Mesh(new THREE.BoxGeometry(width, height, 0.28), armorMaterial);
+      rib.position.set(x, y, -0.12);
+      rib.rotation.z = rotation;
+      hardwareGroup.add(rib);
+      const seam = new THREE.Mesh(new THREE.BoxGeometry(width * 0.72, 0.025, 0.3), seamMaterial);
+      seam.position.set(x, y + (y > 0 ? -height * 0.6 : height * 0.6), 0.04);
+      seam.rotation.z = rotation;
+      hardwareGroup.add(seam);
+    });
+    this.stage.add(hardwareGroup);
 
     // Curved armor rails and illuminated brow / cheek seams.
     this.stage.add(
@@ -393,6 +446,42 @@ class HUDCanvas {
     segmented.scale.y = 0.84;
     ringGroup.add(segmented);
     this.spinGroups.push({ object: segmented, speed: -0.00024 });
+
+    // Partial targeting arcs and real line-segment ticks add hierarchy without
+    // flattening the WebGL scene into a single circular grid.
+    [
+      [3.78, -2.88, -2.18, palette.blue, 0x77f7ff],
+      [3.78, -0.96, -0.23, palette.red, 0x28d5df],
+      [3.78, 0.25, 0.94, palette.blue, 0x77f7ff],
+      [3.78, 2.17, 2.91, palette.red, 0x28d5df],
+      [3.18, -2.5, -1.74, palette.red, 0x28d5df],
+      [3.18, 0.65, 1.42, palette.blue, 0x77f7ff],
+    ].forEach(([radius, start, end, jarvis, edith]) => {
+      const arc = this.makeArc(radius, start, end, jarvis, edith, 0.72, 64, 0.11, true);
+      arc.scale.y = 0.84;
+      ringGroup.add(arc);
+    });
+
+    const tickPositions = [];
+    for (let i = 0; i < 96; i++) {
+      const angle = (i / 96) * Math.PI * 2;
+      const outer = 3.72;
+      const inner = outer - (i % 8 === 0 ? 0.24 : i % 4 === 0 ? 0.16 : 0.08);
+      tickPositions.push(
+        Math.cos(angle) * inner, Math.sin(angle) * inner * 0.84, 0.12,
+        Math.cos(angle) * outer, Math.sin(angle) * outer * 0.84, 0.12,
+      );
+    }
+    const tickGeometry = new THREE.BufferGeometry();
+    tickGeometry.setAttribute('position', new THREE.Float32BufferAttribute(tickPositions, 3));
+    const tickMaterial = this.trackMaterial(new THREE.LineBasicMaterial({
+      color: palette.red,
+      transparent: true,
+      opacity: 0.46,
+    }), palette.red, 0x51eaf2);
+    const targetTicks = new THREE.LineSegments(tickGeometry, tickMaterial);
+    ringGroup.add(targetTicks);
+    this.spinGroups.push({ object: targetTicks, speed: 0.000045 });
     this.stage.add(ringGroup);
 
     // Radial beam geometry matches the six live HTML module buttons.
@@ -418,25 +507,57 @@ class HUDCanvas {
     });
     this.stage.add(beamGroup);
 
-    // A three-dimensional reactor core sits behind the accessible HTML label.
+    // Layered 3D triangular reactor: luminous toruses, segmented vanes, and a
+    // hollow energy triangle replace the generic polyhedral placeholder.
     const reactor = new THREE.Group();
     reactor.position.z = 0.32;
+    const additive = THREE.AdditiveBlending;
     const reactorOuter = new THREE.Mesh(
-      new THREE.IcosahedronGeometry(1.02, 1),
-      this.trackMaterial(new THREE.MeshBasicMaterial({ color: palette.red, wireframe: true, transparent: true, opacity: 0.44 }), palette.red, palette.blue),
+      new THREE.TorusGeometry(1.02, 0.055, 10, 96),
+      this.trackMaterial(new THREE.MeshBasicMaterial({ color: palette.red, transparent: true, opacity: 0.56, blending: additive }), palette.red, palette.blue),
     );
     const reactorInner = new THREE.Mesh(
-      new THREE.OctahedronGeometry(0.72, 1),
-      this.trackMaterial(new THREE.MeshBasicMaterial({ color: palette.cyan, wireframe: true, transparent: true, opacity: 0.74 }), palette.cyan, 0xbaffff),
+      new THREE.TorusGeometry(0.78, 0.075, 12, 72),
+      this.trackMaterial(new THREE.MeshBasicMaterial({ color: palette.cyan, transparent: true, opacity: 0.64, blending: additive }), palette.cyan, 0xbaffff),
     );
+    const vaneGroup = new THREE.Group();
+    for (let i = 0; i < 12; i++) {
+      const angle = (i / 12) * Math.PI * 2;
+      const vane = new THREE.Mesh(
+        new THREE.BoxGeometry(0.16, 0.36, 0.08),
+        this.trackMaterial(new THREE.MeshBasicMaterial({ color: palette.cyan, transparent: true, opacity: 0.66, blending: additive }), palette.cyan, 0xc9ffff),
+      );
+      vane.position.set(Math.cos(angle) * 0.9, Math.sin(angle) * 0.9, 0.05);
+      vane.rotation.z = angle - Math.PI / 2;
+      vaneGroup.add(vane);
+    }
+    const triangleShape = new THREE.Shape();
+    triangleShape.moveTo(0, 0.64);
+    triangleShape.lineTo(0.59, -0.38);
+    triangleShape.lineTo(-0.59, -0.38);
+    triangleShape.closePath();
+    const triangleHole = new THREE.Path();
+    triangleHole.moveTo(0, 0.35);
+    triangleHole.lineTo(-0.31, -0.2);
+    triangleHole.lineTo(0.31, -0.2);
+    triangleHole.closePath();
+    triangleShape.holes.push(triangleHole);
+    const reactorTriangle = new THREE.Mesh(
+      new THREE.ShapeGeometry(triangleShape),
+      this.trackMaterial(new THREE.MeshBasicMaterial({ color: 0xdfffff, transparent: true, opacity: 0.74, side: THREE.DoubleSide, blending: additive }), 0xdfffff, 0xeaffff),
+    );
+    reactorTriangle.position.z = 0.14;
     const reactorGlow = new THREE.Mesh(
-      new THREE.SphereGeometry(0.38, 20, 20),
-      this.trackMaterial(new THREE.MeshBasicMaterial({ color: palette.blue, transparent: true, opacity: 0.42 }), palette.blue, 0x9effff),
+      new THREE.SphereGeometry(0.36, 24, 24),
+      this.trackMaterial(new THREE.MeshBasicMaterial({ color: palette.blue, transparent: true, opacity: 0.24, blending: additive }), palette.blue, 0x9effff),
     );
-    reactor.add(reactorOuter, reactorInner, reactorGlow);
+    reactor.add(reactorOuter, reactorInner, vaneGroup, reactorTriangle, reactorGlow);
+    this.reactorBaseScale = 0.72;
+    reactor.scale.setScalar(this.reactorBaseScale);
     this.stage.add(reactor);
     this.spinGroups.push({ object: reactorOuter, speed: 0.0005 });
     this.spinGroups.push({ object: reactorInner, speed: -0.00075 });
+    this.spinGroups.push({ object: vaneGroup, speed: -0.00036 });
     this.reactor = reactor;
 
     // Scanner band and sparse particles create motion without competing with text.
@@ -469,7 +590,13 @@ class HUDCanvas {
 
   applyTheme() {
     const palette = this.getPalette();
-    this.themables.forEach(entry => entry.material.color.setHex(currentTheme === 'edith' ? entry.edith : entry.jarvis));
+    this.themables.forEach(entry => {
+      const color = currentTheme === 'edith' ? entry.edith : entry.jarvis;
+      entry.material.color.setHex(color);
+      if (entry.material.userData.themeEmissive && entry.material.emissive) {
+        entry.material.emissive.setHex(color);
+      }
+    });
     if (this.scene) {
       const lights = this.scene.children.filter(child => child.isLight);
       if (lights[1]) lights[1].color.setHex(palette.red);
@@ -549,7 +676,8 @@ class HUDCanvas {
       if (this.reactor) {
         this.reactor.rotation.x += delta * 0.00018;
         this.reactor.rotation.y -= delta * 0.00032;
-        this.reactor.scale.setScalar(1 + Math.sin(time * 0.0022) * 0.035);
+        const baseScale = this.reactorBaseScale || 1;
+        this.reactor.scale.setScalar(baseScale * (1 + Math.sin(time * 0.0022) * 0.035));
       }
       if (this.scanline) this.scanline.position.y = Math.sin(time * 0.00026) * 3.2;
       this.renderer.render(this.scene, this.camera);
@@ -859,17 +987,23 @@ function drawNavLines() {
 
 function updateModuleStatus(section, ready = false) {
   const status = document.getElementById('module-status');
+  const topTag = document.querySelector('#target-label-top .target-tag');
   const bottomTag = document.querySelector('#target-label-bottom .target-tag');
   const title = SECTION_TITLES[section] || '';
   const message = section
     ? `${title} // ${ready ? 'MODULE READY' : 'TARGET ACQUIRED'}`
     : 'SELECT A MODULE';
   if (status) status.textContent = message;
+  if (topTag) topTag.textContent = section
+    ? `◈ ${ready ? 'TARGETING' : 'TARGET ACQUIRED'} // ${title}`
+    : '◈ TARGET STANDBY';
   if (bottomTag) bottomTag.textContent = section ? `▸ ${message}` : '▸ SELECT A MODULE TO BEGIN';
 }
 
 function setModulePreview(section, active) {
-  document.getElementById('radial-nav')?.classList.toggle('module-hovering', active);
+  const nav = document.getElementById('radial-nav');
+  nav?.classList.toggle('module-hovering', active);
+  nav?.classList.toggle('preview-pulse', active);
   hudCanvas?.setSectionState(active ? section : currentSection, active ? 'preview' : 'selected');
   document.querySelectorAll('.nav-node').forEach(node => {
     const isTarget = node.dataset.section === section;
@@ -909,6 +1043,11 @@ function navigateTo(section) {
   // Open panel
   panel.classList.add('open');
   document.body.classList.add('panel-open');
+
+  // Entering the archive from HOME must consume the rest of the gesture that
+  // opened it. Otherwise a strong trackpad flick continues into the newly
+  // mounted scroll surface and can skip PROFILE before it can be read.
+  if (!wasOpen && panelBody) cancelCurrentScrollInput(panelBody);
 
   const target = document.getElementById(`panel-section-${section}`);
   if (target && panelBody && (!wasOpen || Math.abs(panelBody.scrollTop - target.offsetTop) > 12)) {
@@ -970,10 +1109,10 @@ function closePanel() {
   releaseScrollInput();
   document.getElementById('content-panel').classList.remove('open');
   document.body.classList.remove('panel-open');
-  document.querySelectorAll('.nav-node').forEach(n => n.classList.remove('active'));
+  document.querySelectorAll('.nav-node').forEach(n => n.classList.remove('active', 'is-hovered'));
   document.querySelectorAll('.nav-connector').forEach(line => line.classList.remove('is-selected', 'is-active'));
   hudCanvas?.setSectionState(null, 'idle');
-  document.getElementById('radial-nav').classList.remove('nav-shifted');
+  document.getElementById('radial-nav').classList.remove('nav-shifted', 'module-hovering', 'preview-pulse', 'targeting');
   const nav = document.getElementById('radial-nav');
   nav.style.setProperty('--nav-rotation', '0deg');
   nav.style.setProperty('--nav-zoom', '1');
@@ -983,6 +1122,9 @@ function closePanel() {
   if (panelBody) panelBody.scrollTop = 0;
   lastPanelScrollTop = 0;
   currentSection = null;
+  updateModuleStatus(null);
+  renderMobileSectionSwitcher(null);
+  updateContinuousScrollProgress();
   updateScrollProgress();
   // Restore hint text
   if (!booting) document.getElementById('hint-text')?.classList.add('visible');
@@ -1000,6 +1142,65 @@ const SECTION_TITLES = {
   leadership: 'LEADERSHIP',
   contact: 'CONTACT',
 };
+
+const SECTION_DETAIL_META = {
+  profile: { id: 'PRF-01', kicker: 'BIOGRAPHICAL DOSSIER', state: 'IDENTITY VERIFIED' },
+  skills: { id: 'SKL-02', kicker: 'CAPABILITY MATRIX', state: 'SYSTEMS INDEXED' },
+  experience: { id: 'EXP-03', kicker: 'MISSION HISTORY', state: 'TIMELINE DECRYPTED' },
+  projects: { id: 'PRJ-04', kicker: 'PROJECT ARCHIVE', state: 'OPERATIONS LOADED' },
+  leadership: { id: 'LDR-05', kicker: 'COMMAND PROFILE', state: 'COMMAND DATA READY' },
+  contact: { id: 'COM-06', kicker: 'SECURE COMMUNICATIONS', state: 'CHANNELS ONLINE' },
+};
+
+function renderMobileSectionSwitcher(activeSection = null) {
+  const switcher = document.getElementById('mobile-section-switcher');
+  if (!switcher) return;
+  if (!switcher.dataset.ready) {
+    CONTENT_SECTIONS.forEach(section => {
+      const source = document.querySelector(`.nav-node[data-section="${section}"] .node-icon`);
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.dataset.section = section;
+      button.setAttribute('aria-label', `Focus ${SECTION_TITLES[section]} section`);
+      button.innerHTML = `${source ? source.innerHTML : '<span aria-hidden="true">◈</span>'}<small>${SECTION_TITLES[section]}</small>`;
+      button.addEventListener('click', () => navigateTo(section));
+      switcher.appendChild(button);
+    });
+    switcher.dataset.ready = 'true';
+  }
+  switcher.querySelectorAll('button').forEach(button => {
+    const selected = button.dataset.section === activeSection;
+    button.classList.toggle('active', selected);
+    if (selected) button.setAttribute('aria-current', 'page');
+    else button.removeAttribute('aria-current');
+  });
+}
+
+function updatePanelChrome(section) {
+  const meta = SECTION_DETAIL_META[section];
+  if (!meta) return;
+  const sourceIcon = document.querySelector(`.nav-node[data-section="${section}"] .node-icon svg`);
+  document.getElementById('panel-title').textContent = SECTION_TITLES[section];
+  document.getElementById('panel-kicker').textContent = meta.kicker;
+  document.getElementById('panel-module-id').textContent = meta.id;
+  document.getElementById('panel-module-state').textContent = meta.state;
+  document.getElementById('panel-system-name').textContent = currentTheme === 'jarvis' ? 'JARVIS MODULE' : 'E.D.I.T.H MODULE';
+  document.getElementById('panel-tag').innerHTML = sourceIcon ? sourceIcon.outerHTML : '◈';
+  renderMobileSectionSwitcher(section);
+}
+
+function updateContinuousScrollProgress() {
+  const body = document.getElementById('panel-body');
+  const progress = document.querySelector('#panel-scroll-progress i');
+  if (!body || !progress) return;
+  const maximum = Math.max(0, body.scrollHeight - body.clientHeight);
+  const percentage = maximum ? Math.min(100, (body.scrollTop / maximum) * 100) : 0;
+  progress.style.width = `${percentage}%`;
+  const guide = document.getElementById('scroll-guide-direction');
+  if (guide) guide.textContent = percentage >= 99
+    ? 'END OF ARCHIVE // ESC RETURNS HOME'
+    : 'SCROLL TO ROTATE MODULE FOCUS';
+}
 
 function renderPanel() {
   document.getElementById('panel-title').textContent = 'PORTFOLIO ARCHIVE';
@@ -1025,6 +1226,8 @@ function renderPanel() {
       case 'contact': renderContact(content); break;
     }
   });
+  renderMobileSectionSwitcher(currentSection);
+  updateContinuousScrollProgress();
 
   // Stagger children
   requestAnimationFrame(() => {
@@ -1060,7 +1263,7 @@ function setActiveSection(section) {
   const nav = document.getElementById('radial-nav');
   nav.classList.add('nav-shifted');
   updateModuleStatus(section);
-  document.getElementById('panel-title').textContent = SECTION_TITLES[section];
+  updatePanelChrome(section);
   updateScrollProgress();
 
   const lines = DATA.ai[currentTheme][section] || DATA.ai[currentTheme].idle;
@@ -1075,6 +1278,7 @@ function updateRadialFocusFromScroll() {
 
   const sections = [...panelBody.querySelectorAll('.panel-section')];
   if (!sections.length) return;
+  updateContinuousScrollProgress();
 
   // Each section has a stable anchor. Interpolate between adjacent anchors so
   // the orbit reaches a section's final angle exactly as its header reaches
@@ -1234,13 +1438,17 @@ function updateActiveSectionFromScroll() {
 /* ── PROFILE ── */
 function renderProfile(body) {
   body.innerHTML = `
-    <div class="profile-grid stagger-item">
-      <div class="profile-avatar">
-        <img src="${DATA.avatar}" alt="${DATA.name}" onerror="this.parentElement.style.background='var(--node-bg)'">
+    <div class="profile-grid profile-hero stagger-item">
+      <div class="profile-avatar-stage">
+        <div class="profile-avatar-target" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="profile-avatar">
+          <img src="${DATA.avatar}" alt="${DATA.name}" onerror="this.parentElement.style.background='var(--node-bg)'">
+        </div>
       </div>
       <div class="profile-info">
         <div class="name">${DATA.name}</div>
-        <div class="role" id="role-readout">▸ ${DATA.roles[0]}</div>
+        <div class="profile-signal profile-signal-focus"><i></i>${DATA.focus.toUpperCase()}</div>
+        <div class="profile-signal profile-signal-role"><i></i>${DATA.orientation.toUpperCase()}</div>
         <div class="bio">${DATA.bio}</div>
       </div>
     </div>
@@ -1270,13 +1478,11 @@ function renderProfile(body) {
       <p style="font-size:0.73rem;color:var(--text-dim);line-height:1.6;">${DATA.bio2}</p>
     </div>
 
-    <a href="${DATA.resume}" target="_blank" class="btn-resume stagger-item">
+    <a href="${DATA.resume}" target="_blank" rel="noopener" class="btn-resume stagger-item">
       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
       DOWNLOAD RESUME
     </a>
   `;
-  // Role rotator
-  startRoleRotator();
 }
 
 function startRoleRotator() {
@@ -1299,21 +1505,21 @@ function startRoleRotator() {
 
 /* ── SKILLS ── */
 function renderSkills(body) {
-  body.innerHTML = DATA.skills.map(cat => `
-    <div class="skill-category">
-      <div class="skill-cat-title">${cat.cat}</div>
-      <div class="skill-tags">
-        ${cat.items.map(item => `<span class="skill-tag">${item}</span>`).join('')}
-      </div>
-    </div>
-  `).join('<div style="height:16px"></div>');
+  body.innerHTML = `<div class="skills-grid">${DATA.skills.map(cat => `
+    <article class="skill-category stagger-item">
+      <div class="skill-cat-title"><span>${cat.cat}</span><small>${String(cat.items.length).padStart(2, '0')} CAPABILITIES</small></div>
+      <div class="skill-signal" aria-hidden="true">${'<i></i>'.repeat(8)}</div>
+      <div class="skill-tags">${cat.items.map(item => `<span class="skill-tag">${item}</span>`).join('')}</div>
+    </article>
+  `).join('')}</div>`;
 }
 
 /* ── EXPERIENCE ── */
 function renderExperience(body) {
   body.innerHTML = `<div class="timeline">` +
-    DATA.experience.map(exp => `
+    DATA.experience.map((exp, index) => `
       <div class="timeline-entry">
+        <span class="timeline-index" aria-hidden="true">${String(index + 1).padStart(2, '0')}</span>
         <div class="te-header">
           <span class="te-role">${exp.role}</span>
           <span class="te-date">${exp.dates}</span>
@@ -1330,8 +1536,9 @@ function renderExperience(body) {
 /* ── PROJECTS ── */
 function renderProjects(body) {
   body.innerHTML = `<div class="projects-grid">` +
-    DATA.projects.map(p => `
+    DATA.projects.map((p, index) => `
       <div class="project-card stagger-item">
+        <span class="project-index">OP-${String(index + 1).padStart(2, '0')}</span>
         <div class="project-name">${p.name}</div>
         ${p.award ? `<div class="project-award">${p.award}</div>` : ''}
         <p class="project-desc">${p.desc}</p>
@@ -1339,9 +1546,9 @@ function renderProjects(body) {
           ${p.tech.map(t => `<span class="project-tag">${t}</span>`).join('')}
         </div>
         <div class="project-links">
-          <a href="${p.github}" class="project-link" target="_blank">⌥ GitHub</a>
+          <a href="${p.github}" class="project-link" target="_blank" rel="noopener">⌥ GitHub</a>
           ${p.demo
-        ? `<a href="${p.demo}" class="project-link" target="_blank">▶ Demo</a>`
+        ? `<a href="${p.demo}" class="project-link" target="_blank" rel="noopener">▶ Demo</a>`
         : `<span class="project-link project-link-disabled" aria-disabled="true">▶ Demo</span>`}
         </div>
       </div>
@@ -1352,6 +1559,7 @@ function renderProjects(body) {
 /* ── LEADERSHIP ── */
 function renderLeadership(body) {
   body.innerHTML = DATA.leadership.map(l => `
+    <div class="leadership-status stagger-item"><span>COMMAND AUTHORITY</span><strong>VERIFIED</strong><i aria-hidden="true"></i></div>
     <div class="hud-card stagger-item">
       <div class="data-row">
         <span class="data-key">ROLE</span>
@@ -1378,20 +1586,43 @@ function renderLeadership(body) {
 /* ── CONTACT ── */
 function renderContact(body) {
   const links = DATA.contact.map(c => `
-    <div class="contact-link stagger-item" 
-         onclick="${c.copy ? `copyToClipboard('${c.copy}', this)` : `window.open('${c.href}','_blank')`}"
-         role="button" tabindex="0"
-         aria-label="${c.label}">
+    ${c.copy ? `<button class="contact-link stagger-item" type="button" data-copy="${c.copy}" aria-label="Copy ${c.label}">` : `<a class="contact-link stagger-item" href="${c.href}" target="_blank" rel="noopener" aria-label="Open ${c.label}">`}
       <span class="cl-icon">${c.icon}</span>
       <span>${c.label}</span>
       ${c.copy ? `<span class="cl-copy">[ COPY ]</span>` : `<span class="cl-copy">[ OPEN ]</span>`}
-    </div>
+    ${c.copy ? '</button>' : '</a>'}
   `).join('');
 
   body.innerHTML = `
-    <div class="hud-label stagger-item">◈ SECURE CHANNELS</div>
-    <div class="contact-links">${links}</div>
+    <div class="contact-layout">
+      <section class="contact-channels" aria-labelledby="secure-channel-title">
+        <div class="contact-availability stagger-item"><i aria-hidden="true"></i><span>COMMUNICATION ARRAY</span><strong>AVAILABLE FOR NEW OPPORTUNITIES</strong></div>
+        <div class="hud-label stagger-item" id="secure-channel-title">◈ SECURE CHANNELS</div>
+        <div class="contact-links">${links}</div>
+      </section>
+      <form class="contact-transmission stagger-item" id="contact-form">
+        <div class="hud-label">◈ ENCRYPTED TRANSMISSION</div>
+        <label for="contact-name">IDENTIFICATION</label>
+        <input id="contact-name" name="name" autocomplete="name" required placeholder="YOUR NAME">
+        <label for="contact-email">RETURN CHANNEL</label>
+        <input id="contact-email" name="email" type="email" autocomplete="email" required placeholder="YOU@DOMAIN.COM">
+        <label for="contact-message">MESSAGE PAYLOAD</label>
+        <textarea id="contact-message" name="message" required rows="5" placeholder="ENTER TRANSMISSION"></textarea>
+        <button class="contact-submit" type="submit">TRANSMIT MESSAGE <span aria-hidden="true">↗</span></button>
+      </form>
+    </div>
   `;
+
+  body.querySelectorAll('[data-copy]').forEach(button => {
+    button.addEventListener('click', () => copyToClipboard(button.dataset.copy, button));
+  });
+  body.querySelector('#contact-form')?.addEventListener('submit', event => {
+    event.preventDefault();
+    const formData = new FormData(event.currentTarget);
+    const subject = encodeURIComponent(`Portfolio contact from ${formData.get('name')}`);
+    const message = encodeURIComponent(`${formData.get('message')}\n\nReply to: ${formData.get('email')}`);
+    window.location.href = `mailto:huyhoang.developer@gmail.com?subject=${subject}&body=${message}`;
+  });
 }
 
 function copyToClipboard(text, el) {
@@ -1505,10 +1736,12 @@ document.addEventListener('DOMContentLoaded', () => {
   const badge = document.getElementById('ai-badge');
   const version = document.getElementById('ai-version');
   const label = document.getElementById('theme-toggle-label');
+  const savedPrompt = document.getElementById('ai-prompt');
   if (saved === 'edith') {
     if (badge) badge.textContent = '◈ E.D.I.T.H';
     if (version) version.textContent = 'BANNER PROTOCOL — STARK INDUSTRIES';
     if (label) label.textContent = '⇄ JARVIS';
+    if (savedPrompt) savedPrompt.textContent = 'E.D.I.T.H ▸';
   }
 
   // Wire nav nodes
@@ -1573,32 +1806,56 @@ document.addEventListener('DOMContentLoaded', () => {
     const now = performance.now();
 
     if (document.body.classList.contains('panel-open')) {
+      // Own wheel movement before the browser applies native scrolling. Some
+      // trackpads report a single momentum delta large enough to cross several
+      // archive anchors before a scroll event is emitted. Capping each applied
+      // step lets the existing 50% handoff gate stop the gesture at the very
+      // next section instead of recovering two or three sections later.
+      e.preventDefault();
       if (scrollInputCancelled) {
         // Cancel every remaining event from the gesture that caused the
         // handoff. Unlocking is driven by an actual quiet period, not a fixed
         // post-section delay.
-        e.preventDefault();
         lastScrollInputAt = now;
         return;
       }
       const panelBody = document.getElementById('panel-body');
-      if (panelBody && !e.target.closest('#panel-body')) {
-        e.preventDefault();
-        panelBody.scrollBy({ top: e.deltaY, behavior: 'auto' });
-      }
+      if (!panelBody || navigationTarget) return;
+
+      const normalizedDelta = e.deltaMode === 1
+        ? e.deltaY * 16
+        : e.deltaMode === 2
+          ? e.deltaY * panelBody.clientHeight
+          : e.deltaY;
+      const maximumStep = Math.max(72, panelBody.clientHeight * 0.32);
+      const controlledDelta = Math.sign(normalizedDelta) * Math.min(
+        Math.abs(normalizedDelta),
+        maximumStep,
+      );
+      panelBody.scrollTop += controlledDelta;
+      updateActiveSectionFromScroll();
       return;
     }
     e.preventDefault();
     scrollNav(e.deltaY > 0 ? 1 : -1);
-  }, { passive: false });
+  }, { passive: false, capture: true });
 
   // Touch swipes only change sections while the continuous panel is closed.
   // When it is open, the panel body owns the gesture and scrolls naturally.
   let touchStartY = 0;
   window.addEventListener('touchstart', e => {
-    if (document.body.classList.contains('panel-open')) releaseScrollInput();
     touchStartY = e.touches[0].clientY;
   }, { passive: true });
+
+  // Keyboard scrolling participates in the same section-entry gate. Escape
+  // remains available because it is intentionally not part of this set.
+  const blockedScrollKeys = new Set(['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End', ' ']);
+  document.addEventListener('keydown', e => {
+    if (!scrollInputCancelled || !document.body.classList.contains('panel-open')) return;
+    if (!blockedScrollKeys.has(e.key)) return;
+    e.preventDefault();
+    lastScrollInputAt = performance.now();
+  }, { capture: true });
 
   window.addEventListener('touchmove', e => {
     if (document.body.classList.contains('panel-open') && scrollInputCancelled) {

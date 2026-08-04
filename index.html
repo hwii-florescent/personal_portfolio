@@ -11,7 +11,7 @@
   <link
     href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=JetBrains+Mono:wght@300;400;500;700&family=Inter:wght@300;400;500;600&display=swap"
     rel="stylesheet">
-  <link rel="stylesheet" href="styles.css?v=three-mobile-fix3" />
+  <link rel="stylesheet" href="styles.css?v=continuous-archive7" />
 </head>
 
 <body class="jarvis">
@@ -90,51 +90,25 @@
       <span class="ai-cursor">█</span>
     </footer>
 
-    <!-- Side data strips -->
-    <div class="hud-strip hud-strip-left" aria-hidden="true">
-      <div class="strip-label">BIOMETRIC</div>
-      <div class="strip-bars">
-        <div class="s-bar" style="--h:62%"></div>
-        <div class="s-bar" style="--h:88%"></div>
-        <div class="s-bar" style="--h:45%"></div>
-        <div class="s-bar" style="--h:75%"></div>
-        <div class="s-bar" style="--h:90%"></div>
-        <div class="s-bar" style="--h:55%"></div>
+    <aside class="tactical-readout" aria-label="Tactical data link status">
+      <div class="tactical-radar" aria-hidden="true">
+        <span class="radar-ring radar-ring-one"></span>
+        <span class="radar-ring radar-ring-two"></span>
+        <span class="radar-axis radar-axis-horizontal"></span>
+        <span class="radar-axis radar-axis-vertical"></span>
+        <span class="radar-sweep"></span>
+        <i class="radar-contact radar-contact-one"></i>
+        <i class="radar-contact radar-contact-two"></i>
       </div>
-      <div class="strip-readout">98.7%<br><small>NOMINAL</small></div>
-    </div>
-    <div class="hud-strip hud-strip-right" aria-hidden="true">
-      <div class="strip-label">SENSORS</div>
-      <div class="strip-bars">
-        <div class="s-bar" style="--h:72%"></div>
-        <div class="s-bar" style="--h:50%"></div>
-        <div class="s-bar" style="--h:95%"></div>
-        <div class="s-bar" style="--h:38%"></div>
-        <div class="s-bar" style="--h:80%"></div>
-        <div class="s-bar" style="--h:65%"></div>
-      </div>
-      <div class="strip-readout">ACTIVE<br><small>ALL CLEAR</small></div>
-    </div>
-
-    <aside class="diagnostic-readout diagnostic-readout-left" aria-label="Biometric status">
-      <div class="diagnostic-heading"><span class="diagnostic-marker"></span> BIOMETRIC STATUS</div>
-      <div class="diagnostic-body">
-        <div><span>HEART RATE</span><strong>72 BPM</strong></div>
-        <div><span>CORE TEMP</span><strong>98.6°F</strong></div>
-        <div><span>STATUS</span><strong class="status-good">NOMINAL</strong></div>
-      </div>
-      <div class="diagnostic-sparkline" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
-    </aside>
-
-    <aside class="diagnostic-readout diagnostic-readout-right" aria-label="Armor systems status">
-      <div class="diagnostic-heading"><span class="diagnostic-marker"></span> ARMOR SYSTEMS</div>
-      <div class="diagnostic-meter"><span>SYSTEM INTEGRITY</span><strong>100%</strong><i><b style="--meter:100%"></b></i></div>
-      <div class="diagnostic-meter"><span>POWER LEVEL</span><strong>87%</strong><i><b style="--meter:87%"></b></i></div>
-      <div class="diagnostic-subheading">ACTIVE MODULES</div>
-      <div class="diagnostic-list">
-        <span>J.A.R.V.I.S <b>ONLINE</b></span>
-        <span>E.D.I.T.H <b>ONLINE</b></span>
-        <span>DATA LINK <b>SECURE</b></span>
+      <div class="tactical-data">
+        <div class="diagnostic-heading"><span class="diagnostic-marker"></span> DATA LINK</div>
+        <svg class="data-link-graph" viewBox="0 0 150 44" preserveAspectRatio="none" aria-hidden="true">
+          <polyline points="0,36 17,28 32,32 49,15 67,23 86,8 105,18 127,11 150,4" />
+          <line x1="0" y1="40" x2="150" y2="40" />
+        </svg>
+        <small>CURRENT LOCATION</small>
+        <strong>GAINESVILLE, FL</strong>
+        <em>29.6516° N&nbsp;&nbsp;82.3248° W</em>
       </div>
     </aside>
   </div>
@@ -225,10 +199,11 @@
         <div class="reactor-halo reactor-halo-inner" aria-hidden="true"></div>
         <div class="reactor-shell" aria-hidden="true">
           <svg class="reactor-mark" viewBox="0 0 120 120" fill="none">
-            <path d="M60 9 101 32v46L60 101 19 78V32L60 9Z" stroke="currentColor" stroke-width="2" />
-            <path d="m60 24 27 15v29L60 83 33 68V39l27-15Z" stroke="currentColor" stroke-width="1.5" />
-            <path d="m60 35 15 9v18l-15 9-15-9V44l15-9Z" fill="currentColor" fill-opacity=".18" stroke="currentColor" stroke-width="2" />
-            <path d="M60 35v36M45 44l30 18M75 44 45 62" stroke="currentColor" stroke-width="1.4" />
+            <circle cx="60" cy="60" r="50" stroke="currentColor" stroke-width="2" stroke-dasharray="8 5" opacity=".7" />
+            <path d="M60 20 99 88H21L60 20Z" fill="currentColor" fill-opacity=".12" stroke="currentColor" stroke-width="5" stroke-linejoin="round" />
+            <path d="M60 38 82 77H38L60 38Z" fill="currentColor" fill-opacity=".38" stroke="currentColor" stroke-width="3" stroke-linejoin="round" />
+            <path d="M60 20v18M21 88l17-11M99 88 82 77" stroke="currentColor" stroke-width="5" />
+            <circle cx="60" cy="60" r="8" fill="white" fill-opacity=".75" />
           </svg>
         </div>
         <div class="reactor-readout">
@@ -236,6 +211,13 @@
           <strong>RESUME</strong>
           <span id="module-status" role="status" aria-live="polite">SELECT A MODULE</span>
         </div>
+      </div>
+
+      <div class="scope-telemetry" aria-hidden="true">
+        <span class="scope-mark scope-mark-nw">C0-27:13<br>AZ 29.65</span>
+        <span class="scope-mark scope-mark-ne">01:20-7<br>EL 82.32</span>
+        <span class="scope-mark scope-mark-sw">PWR 87.0<br>SYNC 98.7</span>
+        <span class="scope-mark scope-mark-se">DL SECURE<br>TRK 06/06</span>
       </div>
 
       <!-- Target status labels -->
@@ -377,17 +359,31 @@
   <!-- ══ CONTENT PANEL ══ -->
   <aside id="content-panel" aria-label="Portfolio content" role="region">
     <div id="panel-header">
-      <div class="panel-section-tag" id="panel-tag">◈</div>
-      <h2 class="panel-title" id="panel-title">INITIALIZING</h2>
+      <div class="panel-heading-lockup">
+        <div class="panel-section-tag" id="panel-tag" aria-hidden="true">◈</div>
+        <div>
+          <span class="panel-kicker" id="panel-kicker">CONTINUOUS ARCHIVE</span>
+          <h2 class="panel-title" id="panel-title">INITIALIZING</h2>
+        </div>
+      </div>
+      <div class="panel-module-meta" aria-live="polite">
+        <span id="panel-system-name">JARVIS MODULE</span>
+        <strong id="panel-module-id">SYS-00</strong>
+        <small id="panel-module-state">AWAITING TARGET</small>
+      </div>
       <div class="panel-scan-bar"></div>
-      <button id="panel-close" aria-label="Close panel">✕</button>
+      <button id="panel-close" aria-label="Close section archive and return to the main HUD">
+        <span aria-hidden="true">BACK&nbsp; ✕</span>
+      </button>
     </div>
+    <nav id="mobile-section-switcher" aria-label="Resume section switcher"></nav>
     <div id="panel-body">
       <!-- Content injected by JS -->
     </div>
+    <div id="panel-scroll-progress" aria-hidden="true"><i></i></div>
     <div id="scroll-guide" aria-live="polite">
-      <span id="scroll-guide-text">SCROLL TO EXPLORE ALL SECTIONS</span>
-      <span id="scroll-guide-direction">ACTIVE MODULE TRACKS YOUR POSITION</span>
+      <span id="scroll-guide-text">CONTINUOUS DATA STREAM</span>
+      <span id="scroll-guide-direction">SCROLL TO ROTATE MODULE FOCUS</span>
     </div>
   </aside>
 
@@ -402,7 +398,7 @@
   </div>
 
   <!-- ══ SCRIPTS ══ -->
-  <script src="script.js?v=three-js"></script>
+  <script src="script.js?v=continuous-archive7"></script>
 </body>
 
 </html>
