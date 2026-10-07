@@ -75,7 +75,7 @@ export function Overview() {
 
 export function AiLine({ text }: { text: string }) {
   return (
-    <p className="pointer-events-none absolute inset-x-0 bottom-16 px-4 text-center font-mono text-xs uppercase tracking-widest text-accent sm:text-sm" aria-live="polite">
+    <p className="pointer-events-none absolute inset-x-0 bottom-28 px-4 sm:bottom-16 text-center font-mono text-xs uppercase tracking-widest text-accent sm:text-sm" aria-live="polite">
       ▸ <Typed key={text} text={text} />
     </p>
   );

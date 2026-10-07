@@ -51,7 +51,7 @@ export default function Portfolio() {
 
       {activeSection && (
         <section
-          className="hud-card pointer-events-auto absolute inset-x-3 bottom-28 top-14 overflow-y-auto p-6 md:inset-x-auto md:right-8 md:top-20 md:w-[min(560px,45vw)]"
+          className="hud-card pointer-events-auto absolute inset-x-3 bottom-44 top-14 sm:bottom-28 overflow-y-auto p-6 md:inset-x-auto md:right-8 md:top-20 md:w-[min(560px,45vw)]"
           aria-label={activeSection.label}
         >
           <div className="mb-5 flex items-center justify-between">
@@ -70,7 +70,7 @@ export default function Portfolio() {
             key={s.id}
             onClick={() => select(active === s.id ? null : s.id)}
             aria-pressed={active === s.id}
-            className={`border px-3 py-1.5 font-hud text-[10px] uppercase tracking-[0.2em] ${
+            className={`border px-2 py-1.5 font-hud text-[10px] sm:px-3 uppercase tracking-[0.2em] ${
               active === s.id ? "border-gold bg-gold/10 text-gold" : "border-accent/40 text-accent hover:bg-accent/10"
             }`}
           >
