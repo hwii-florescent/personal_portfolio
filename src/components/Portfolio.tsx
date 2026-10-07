@@ -51,9 +51,10 @@ export default function Portfolio() {
 
       {activeSection && (
         <section
-          className="hud-card pointer-events-auto absolute inset-x-3 bottom-44 top-14 sm:bottom-28 overflow-y-auto p-6 md:inset-x-auto md:right-8 md:top-20 md:w-[min(560px,45vw)]"
+          className="holo-panel pointer-events-auto inset-x-3 bottom-44 top-14 p-6 sm:bottom-28 md:inset-x-auto md:right-8 md:top-20 md:w-[min(540px,44vw)]"
           aria-label={activeSection.label}
         >
+          <div className="holo-scan" />
           <div className="mb-5 flex items-center justify-between">
             <h2 className="font-hud text-xl font-bold uppercase tracking-widest text-gold">{activeSection.label}</h2>
             <button onClick={() => select(null)} className="font-mono text-xs text-accent hover:text-gold">[ ESC ] CLOSE</button>

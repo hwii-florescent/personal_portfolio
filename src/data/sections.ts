@@ -1,9 +1,10 @@
+// Each section is a real object projected above the desk (CC0 models in public/models).
 export const sections = [
-  { id: "experience", label: "Experience", shape: "box" },
-  { id: "projects", label: "Projects", shape: "icosahedron" },
-  { id: "skills", label: "Skills", shape: "dodecahedron" },
-  { id: "leadership", label: "Leadership", shape: "cone" },
-  { id: "contact", label: "Contact", shape: "torus" },
+  { id: "experience", label: "Experience", model: "/models/crane.glb" },
+  { id: "projects", label: "Projects", model: "/models/laptop.glb" },
+  { id: "skills", label: "Skills", model: "/models/robot.glb" },
+  { id: "leadership", label: "Leadership", model: "/models/ship.glb" },
+  { id: "contact", label: "Contact", model: "/models/dish.glb" },
 ] as const;
 
 export type SectionId = (typeof sections)[number]["id"];

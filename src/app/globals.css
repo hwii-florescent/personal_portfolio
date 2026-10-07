@@ -42,3 +42,46 @@ html, body { background: #020004; color: var(--color-fg); font-family: var(--fon
 @media (prefers-reduced-motion: reduce) {
   .caret::after { animation: none; }
 }
+
+/* Hologram panel: translucent projected light, not a card. Scene shows through; edges fade out. */
+.holo-panel {
+  position: absolute;
+  background:
+    linear-gradient(180deg, color-mix(in srgb, var(--accent) 14%, transparent), color-mix(in srgb, var(--accent) 4%, transparent) 60%, color-mix(in srgb, var(--accent) 9%, transparent)),
+    color-mix(in srgb, var(--bg) 58%, transparent);
+  backdrop-filter: blur(7px);
+  box-shadow: 0 0 50px color-mix(in srgb, var(--accent) 18%, transparent), inset 0 0 40px color-mix(in srgb, var(--accent) 10%, transparent);
+  /* side rails fade top and bottom like projected light */
+  --rail: linear-gradient(180deg, transparent, var(--accent) 12%, var(--accent) 88%, transparent);
+  border-image: var(--rail) 1;
+  border-left: 1px solid; border-right: 1px solid;
+  transform-origin: right center;
+  animation: holo-in 0.55s cubic-bezier(.2,.8,.2,1) both, holo-flicker 6s infinite 1s;
+  overflow-y: auto;
+}
+.holo-panel::before { /* scanlines + travelling bright band */
+  content: ""; position: sticky; top: 0; display: block; height: 0; pointer-events: none;
+}
+.holo-panel > * { position: relative; }
+.holo-panel, .holo-panel * { text-shadow: 0 0 7px color-mix(in srgb, var(--accent) 55%, transparent); }
+.holo-scan {
+  position: absolute; inset: 0; pointer-events: none; z-index: 1;
+  background:
+    repeating-linear-gradient(to bottom, transparent 0 2px, color-mix(in srgb, var(--accent) 7%, transparent) 2px 3px),
+    linear-gradient(to bottom, transparent, color-mix(in srgb, var(--accent) 22%, transparent) 50%, transparent) 0 -30% / 100% 30% no-repeat;
+  animation: holo-sweep 5s linear infinite;
+}
+@keyframes holo-in {
+  0% { opacity: 0; transform: perspective(1300px) rotateY(-14deg) scaleY(0.02) scaleX(0.92); }
+  60% { opacity: 1; transform: perspective(1300px) rotateY(-10deg) scaleY(1.02); }
+  100% { opacity: 1; transform: perspective(1300px) rotateY(-9deg) scaleY(1); }
+}
+@keyframes holo-sweep { to { background-position: 0 0, 0 130%; } }
+@keyframes holo-flicker { 0%, 94%, 100% { opacity: 1; } 95% { opacity: .82; } 97% { opacity: .96; } }
+@media (max-width: 767px) {
+  .holo-panel { animation-name: holo-in-flat, holo-flicker; transform-origin: center bottom; }
+}
+@keyframes holo-in-flat { 0% { opacity: 0; transform: scaleY(0.05); } 100% { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .holo-panel, .holo-scan { animation: none; transform: perspective(1300px) rotateY(-9deg); }
+}

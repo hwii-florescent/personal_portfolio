@@ -45,11 +45,11 @@ export function Overview() {
   const current = p.experience[0];
   return (
     <>
-      <section className="hud-card pointer-events-auto absolute left-4 top-14 max-w-sm p-5 sm:left-8 sm:top-20" aria-label="Overview">
+      <section className="hud-card pointer-events-auto absolute left-4 top-14 max-w-xs p-5 sm:left-8 sm:top-20" aria-label="Overview">
         <p className="font-mono text-[10px] uppercase tracking-[0.3em] text-primary">Subject profile</p>
         <h2 className="mt-2 font-hud text-3xl font-black uppercase leading-none text-fg sm:text-4xl">{p.name}</h2>
         <p className="mt-2 h-5 font-mono text-sm text-accent"><Typed key={role} text={role} speed={35} /></p>
-        <p className="mt-4 text-sm text-muted">{p.bio}</p>
+        <p className="mt-4 line-clamp-3 text-sm text-muted">{p.bio}</p>
         <p className="mt-4 font-mono text-[11px] text-muted">
           {p.education.school} · {p.education.degree} · {p.education.grad}
         </p>
