@@ -1,0 +1,17 @@
+@import "tailwindcss";
+
+/* Design tokens: edit these to re-theme the whole site. */
+@theme {
+  --color-bg: #07090d;
+  --color-fg: #e8ecf2;
+  --color-muted: #8a94a6;
+  --color-accent: #5eead4;
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-sans);
+}
