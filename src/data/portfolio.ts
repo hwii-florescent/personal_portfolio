@@ -277,3 +277,11 @@ export const portfolio = {
 
 export const resumeUrl = "/Huy_Hoang_Resume.pdf";
 export const avatarUrl = "/avatar.jpeg";
+
+/** Headline numbers for the HUD overview. Keep in sync with the bullets above. */
+export const stats = [
+  { value: "120k+", label: "Experiments migrated" },
+  { value: "99.8%", label: "Backfill completion" },
+  { value: "94%", label: "LLM review precision" },
+  { value: "3.9", label: "GPA / 4.0" },
+] as const;
