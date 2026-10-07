@@ -48,8 +48,8 @@ html, body { background: #020004; color: var(--color-fg); font-family: var(--fon
   position: absolute;
   background:
     linear-gradient(180deg, color-mix(in srgb, var(--accent) 14%, transparent), color-mix(in srgb, var(--accent) 4%, transparent) 60%, color-mix(in srgb, var(--accent) 9%, transparent)),
-    color-mix(in srgb, var(--bg) 58%, transparent);
-  backdrop-filter: blur(7px);
+    color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(10px);
   box-shadow: 0 0 50px color-mix(in srgb, var(--accent) 18%, transparent), inset 0 0 40px color-mix(in srgb, var(--accent) 10%, transparent);
   /* side rails fade top and bottom like projected light */
   --rail: linear-gradient(180deg, transparent, var(--accent) 12%, var(--accent) 88%, transparent);

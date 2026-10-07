@@ -88,7 +88,7 @@ function Slot({ i, p, active, onSelect, motion }: {
       <Emitter p={p} lit={selected || hover} />
       <group ref={holo} position-y={0.35}>
         <Suspense fallback={null}>
-          <Hologram url={s.model} p={p} opacity={other ? 0.18 : 1} boost={hover || selected ? 0.35 : 0} motion={motion} />
+          <Hologram url={s.model} p={p} opacity={other ? 0.12 : 1} boost={hover || selected ? 0.35 : 0} motion={motion} />
         </Suspense>
       </group>
       {/* generous invisible hit target so the click doesn't depend on thin geometry */}
