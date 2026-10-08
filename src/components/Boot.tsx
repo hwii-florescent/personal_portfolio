@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 const checks = ["ARC REACTOR ........ ONLINE", "NEURAL INTERFACE .... SYNCED", "PORTFOLIO DATA ...... LOADED"];
 
-export default function Boot({ ai, onDone }: { ai: string; onDone: () => void }) {
+export default function Boot({ ai, onDoneAction }: { ai: string; onDoneAction: () => void }) {
   const [pct, setPct] = useState(0);
 
   useEffect(() => {
@@ -13,18 +13,18 @@ export default function Boot({ ai, onDone }: { ai: string; onDone: () => void })
   }, []);
   useEffect(() => {
     if (pct < 100) return;
-    const t = setTimeout(onDone, 300);
+    const t = setTimeout(onDoneAction, 300);
     return () => clearTimeout(t);
-  }, [pct, onDone]);
+  }, [pct, onDoneAction]);
   useEffect(() => {
-    window.addEventListener("keydown", onDone);
-    return () => window.removeEventListener("keydown", onDone);
-  }, [onDone]);
+    window.addEventListener("keydown", onDoneAction);
+    return () => window.removeEventListener("keydown", onDoneAction);
+  }, [onDoneAction]);
 
   return (
     <div
       role="status"
-      onClick={onDone}
+      onClick={onDoneAction}
       className="absolute inset-0 z-50 flex cursor-pointer flex-col items-center justify-center bg-bg font-mono text-xs text-accent"
     >
       <p className="font-hud text-3xl font-black tracking-[0.4em] text-primary sm:text-5xl">{ai}</p>

@@ -1,6 +1,6 @@
 // Each section is a real object projected above the desk (CC0 models in public/models).
 export const sections = [
-  { id: "experience", label: "Experience", model: "/models/crane.glb" },
+  { id: "experience", label: "Experience", model: "/models/briefcase.glb" },
   { id: "projects", label: "Projects", model: "/models/laptop.glb" },
   { id: "skills", label: "Skills", model: "/models/robot.glb" },
   { id: "leadership", label: "Leadership", model: "/models/ship.glb" },
@@ -12,10 +12,10 @@ export type SectionId = (typeof sections)[number]["id"];
 type Voice = Record<SectionId | "idle", string[]>;
 
 // Two voices: Stark's J.A.R.V.I.S. and Peter's suit AI, K.A.R.E.N.
-export const lines: Record<"jarvis" | "spidey", Voice> = {
+export const lines = {
   jarvis: {
     idle: ["Good evening, sir. All systems nominal.", "Awaiting your command.", "Select a module to begin."],
-    experience: ["Career timeline retrieved from the archives.", "Seven engagements on record, sir."],
+    experience: ["Career timeline retrieved from the archives.", "Five engagements on record, sir."],
     projects: ["Project files decrypted. One has a Terraform prize attached.", "Shall I run a combat assessment?"],
     skills: ["Cross-referencing the technology stack.", "Skill matrix calibrated."],
     leadership: ["Command structure analysis complete.", "Leadership metrics: above average."],
@@ -29,4 +29,4 @@ export const lines: Record<"jarvis" | "spidey", Voice> = {
     leadership: ["Checking leadership history. Found it.", "Team lead, confirmed."],
     contact: ["Opening comms. Don't mess it up.", "Line is secure."],
   },
-};
+} satisfies Record<"jarvis" | "spidey", Voice>;

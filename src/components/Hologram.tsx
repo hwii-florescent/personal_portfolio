@@ -5,11 +5,12 @@ import { useGLTF } from "@react-three/drei";
 import { useEffect, useMemo, useRef } from "react";
 import {
   AdditiveBlending, Box3, Color, DoubleSide, EdgesGeometry, LineBasicMaterial, LineSegments,
-  MathUtils, Mesh, ShaderMaterial, Vector3, type Group,
+  MathUtils, Mesh, ShaderMaterial, Vector3,
 } from "three";
 import type { Palette } from "@/data/themes";
+import { timer } from "@/lib/timer";
 
-// Recipe (from the hologram-shader write-ups): fresnel rim + moving scanlines + sweep band + flicker,
+// Recipe (from the hologram-shader write-ups): fresnel rim + moving scanlines + sweep band,
 // additive blending, double-sided, no depth write so you can see through the object.
 const vertex = /* glsl */ `
   varying vec3 vN; varying vec3 vV; varying float vY;
@@ -27,20 +28,17 @@ const fragment = /* glsl */ `
     float fres = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.2);
     float scan = 0.6 + 0.4 * sin(vY * 70.0 - uTime * 3.0);
     float band = smoothstep(0.0, 1.0, 1.0 - abs(fract(vY * 0.45 - uTime * 0.2) - 0.5) * 9.0);
-    float flick = 0.93 + 0.07 * sin(uTime * 41.0);
-    float a = ((0.05 + fres * 0.65) * scan * flick + band * 0.18) * uOpacity;
+    float a = ((0.05 + fres * 0.65) * scan + band * 0.18) * uOpacity;
     gl_FragColor = vec4(uColor * (0.45 + fres * 0.8), a);
     #include <tonemapping_fragment>
     #include <colorspace_fragment>
   }`;
 
-const TARGET = 1.0; // longest side, world units
 
 export default function Hologram({
-  url, p, opacity = 1, boost = 0, motion = 1,
-}: { url: string; p: Palette; opacity?: number; boost?: number; motion?: number }) {
+  url, p, opacity = 1, boost = 0, motion = 1, size = 1,
+}: { url: string; p: Palette; opacity?: number; boost?: number; motion?: number; size?: number }) {
   const { scene } = useGLTF(url);
-  const spin = useRef<Group>(null);
   const op = useRef(opacity);
 
   const mat = useMemo(
@@ -70,14 +68,14 @@ export default function Hologram({
       o.add(e);
     });
     const box = new Box3().setFromObject(root);
-    const size = box.getSize(new Vector3());
-    const k = TARGET / Math.max(size.x, size.y, size.z);
+    const dim = box.getSize(new Vector3());
+    const k = size / Math.max(dim.x, dim.y, dim.z);
     root.scale.multiplyScalar(k);
     const b2 = new Box3().setFromObject(root);
     const c = b2.getCenter(new Vector3());
     root.position.set(-c.x, -b2.min.y, -c.z);
     return root;
-  }, [scene, mat, edgeMat]);
+  }, [scene, mat, edgeMat, size]);
 
   // Refs hand the materials to the frame loop (the React compiler forbids mutating memoized values in it).
   const matRef = useRef<ShaderMaterial>(null);
@@ -88,22 +86,17 @@ export default function Hologram({
     return () => { mat.dispose(); edgeMat.dispose(); };
   }, [mat, edgeMat]);
 
-  useFrame((s, dt) => {
+  useFrame((_, dt) => {
     const m = matRef.current;
     const e = edgeRef.current;
     if (!m || !e) return;
     op.current = MathUtils.damp(op.current, opacity + boost, 6, dt);
-    m.uniforms.uTime.value = s.clock.elapsedTime;
+    m.uniforms.uTime.value = motion ? timer.getElapsed() : 0;
     m.uniforms.uOpacity.value = op.current;
     m.uniforms.uColor.value.set(p.accent);
     e.color.set(p.accent);
     e.opacity = Math.min(1, 0.9 * op.current);
-    if (spin.current) spin.current.rotation.y += dt * 0.45 * motion;
   });
 
-  return (
-    <group ref={spin}>
-      <primitive object={model} />
-    </group>
-  );
+  return <primitive object={model} />;
 }

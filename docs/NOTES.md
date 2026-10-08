@@ -43,16 +43,16 @@ Next.js 16 (Turbopack, cacheComponents on), React 19.3, Tailwind v4, three 0.186
 tsc and eslint clean, `npm run build` OK (fully static). Headless Chrome: boot, overview, open/close section via nav and Esc, theme toggle, no console errors. Mobile measured at real 390x800: no overlaps, no horizontal scroll. Not tested in Vivaldi.
 
 ## Known issues / next steps
-1. Crane reads as a thin line and its top goes behind the profile card. Swap model or rescale; normalisation uses the longest side.
-2. Section panel is a DOM element with CSS 3D tilt, not a WebGL object, so the desk cannot occlude it. Option: `Html transform` or WebGL plane with the text as texture. Watch the root-unmount issue.
-3. No desk clutter props (mug, tools, keyboard). Add a few real CC0 props for the lived-in workshop feel.
-4. K.A.R.E.N. theme not re-checked on the new scene.
-5. Low-end GPU/perf untested (Bloom, 2 MB `crane.glb`). Consider draco/meshopt compression and a quality toggle.
-6. Mobile top bar title wraps to two lines.
-7. Keyboard focus does not move into the panel on open. Add focus management; flicker and sweep already disabled under `prefers-reduced-motion`.
+1. ~~Crane~~ Done: replaced by a CC0 briefcase.
+2. Done: section panel is real DOM placed in the scene by drei `Html transform` (`HtmlPanel.tsx`) on md+, flat overlay below md. Shared design in `src/data/doc.ts` (`Sections.tsx`, `PanelShell.tsx`). WebGL-plane variant was prototyped and dropped (more code, no text selection/a11y, no visible gain). Known limit: DOM cannot be occluded by scene objects.
+3. Done: mug and pen-cup props (`Prop` in `Scene.tsx`). A keyboard was not found under CC0.
+4. Done: K.A.R.E.N. checked, looks fine.
+5. Done: models total ~580 KB, so no compression. `Scene.tsx` uses drei `PerformanceMonitor`: if fps stays low it drops to 1x resolution and turns Bloom off (one-way). Measured 120 fps at 2x on an M-series Mac; under 12x CPU throttle (47 fps) it degraded. Not tested on a real low-end GPU.
+6. Done: title is nowrap, `// Portfolio` hidden on mobile.
+7. Done: panel focuses itself on mount (`PanelShell.tsx`), focus returns to the opener on close (`Portfolio.tsx`).
 8. Labels use Orbitron TTF through troika; a variable font works at default weight only.
-9. Remove `CNAME` when moving to Vercel; update metadata and add an OG image.
-10. Overview HUD cards still use the old HUD style by design. Revisit if the whole UI should go holographic.
+9. Done in code: `CNAME` removed, `metadataBase`, generated `opengraph-image.tsx`. Still manual: add `huyhg.dev` in Vercel and DNS.
+10. Done: home cards and section panels share one `PanelShell` (size via `w`/`h`) and one 3D `HoloPanel` frame (`HtmlPanel.tsx`); on md+ the home cards are in the scene (`HomePanels`), below md a flat profile card. Telemetry is a real `<table>`.
 11. Spidey ideas: web-lattice grid, suit-red/blue pads, a mask hologram.
 
 ## Run
@@ -61,3 +61,10 @@ npm install
 npm run dev     # http://localhost:3000
 npm run build
 ```
+
+## Workshop scene
+`src/components/Workshop.tsx` replaces the old dark desk: a wood-plank workbench with a cutting mat under the emitters, scraps/PCB/printed prototypes/filament spools/tool caddy along the back, and a wall with pegboard, blueprint, shelving and a hanging lamp. Everything is procedural (primitives + canvas textures), so there are no new assets or licenses. Palette accents (mat grid, blueprint, tape) follow the theme.
+Update: the bench top is brushed stainless (canvas streak texture + `meshPhysicalMaterial` anisotropy, lit by a small `Environment` of lightformers). The mug and pen holder are real solid GLBs (`RealProp`), not holograms. Home screen shows only Live telemetry, as a portrait hologram leaning slightly, low over the bench (`HomePanels`); a dark-walnut picture frame with a placeholder image hangs on the left wall (`WallFrame` in `Workshop.tsx`; swap `placeholderTex` for a real image); the profile card is behind `SHOW_PROFILE` in `HtmlPanel.tsx`.
+Update: the workspace is now an engineer's desk. `src/components/props.tsx` holds the procedural props (mechanical keyboard with instanced keycaps, gaming mouse + pad, headset, duck, figures, GPU, handheld, pegboard tools). The wall has a pegboard, figure shelves, a "{ SHIP IT }" neon sign, the walnut picture frame and a right-hand shelf. The home hologram on the right is now the Profile card (angled `yaw -1.1`, about 45° on screen, wide and thin-slabbed, floating a little above the bench); `TelemetryBody` is parked in `Hud.tsx` and can be swapped back in `HomePanels`.
+Update: the bench clutter (box, PCB, prints, spools, caddy, bolts) is gone. There is one monitor (`Monitor` in `HtmlPanel.tsx`, layout id `profile`, always `PANEL` size). At home it shows the profile out in the room (yaw -1.1). When a section opens (md+) it flies to the camera, face-on, on the right of the screen, and the camera does not move (only mouse parallax). The five section holograms stay on their pads but the pads line up in a row on the bench at the left (`focusPose`: screen-space row projected onto the bench plane; saved layout offsets are ignored while open). Content changes inside the monitor swipe like full-screen apps (`Swipe`: new screen slides in from the side of its place in `profile, ...sections`, old one slides away and fades; keyframes `swipe-in/out` in `globals.css`). Below md the flat overlay is unchanged. Time comes from one `THREE.Timer` (`src/lib/timer.ts`, advanced by `<TimerTick />`). R3F 9.8.1 still builds its own `THREE.Clock` internally, so the "THREE.Clock deprecated" console warning remains until R3F moves to Timer.
+Update: home and section view have separate layouts. Layout ids: `profile` + `experience…contact` are home; `monitor-open` + `pad-experience…pad-contact` are section view (`viewOf` in `src/data/layout.ts`). Each has position/yaw/scale; monitors (`profile`, `monitor-open`) also have independent width/height multipliers. `HoloPanel` (monitor) and `Slot` (pads) blend the two *world* poses with one factor `k` and then solve for the local pose inside whichever `Editable3D` wrapper is active, so the flight, swivel and resize animate between the two saved layouts. Pads' default row spots and the open monitor's default spot are computed in `focusPose`, and pad defaults ignore the monitor's size so resizing never shifts saved pad offsets. The dev editor has Home view / Section view buttons; opening a section while editing switches the view.

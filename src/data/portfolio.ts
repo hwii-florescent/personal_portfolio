@@ -89,12 +89,17 @@ export const portfolio = {
       ]
     },
     {
-      "cat": "AI/ML & LIBRARIES",
+      "cat": "AI/ML",
       "items": [
         "Model Context Protocol (MCP)",
         "LangChain",
         "PyTorch",
-        "TensorFlow",
+        "TensorFlow"
+      ]
+    },
+    {
+      "cat": "LIBRARIES",
+      "items": [
         "OpenCV",
         "NumPy",
         "pandas",
@@ -111,22 +116,22 @@ export const portfolio = {
   "experience": [
     {
       "role": "Software Engineering Intern",
-      "company": "Uber",
-      "dates": "May 2026 – Jul 2026",
+      "company": "Uber Technologies Inc.",
+      "dates": "May 2026 – July 2026",
       "bullets": [
-        "Led search improvements for an A/B experimentation platform end-to-end, engineering OpenSearch-native sort and filter on Go gRPC endpoints for 120k+ experiments with 27k+ searches/day",
-        "Ran a zero-downtime schema migration in Go across Protobuf, MySQL, Kafka, and OpenSearch, dual-writing on the live path and backfilling 120k+ production experiments through idempotent Cadence workflows at 99.8% completion",
-        "Built a Go service exposing 7 experiment-management tools over Model Context Protocol (MCP), integrating it into an agentic debugging pipeline for 1k+ services running experiments",
-        "Architected a Python LLM reviewer for A/B experiment configs across 500 diffs/day, cutting agent context by 50% and measuring 94% precision and 86% recall with an evaluation harness"
+        "Led search improvements project for an A/B experimentation platform end-to-end, implemented OpenSearch-native sort and filter on Go gRPC endpoints for 120k+ experiments with 27k+ searches/day",
+        "Ran a zero-downtime schema migration in Go across protobuf, MySQL, Kafka, and OpenSearch indices, dual-writing on the live path and backfilling 120k+ production experiments through idempotent Cadence workflows at 99.8% completion",
+        "Built a Go service exposing 7 experiment-management tools over Model Context Protocol (MCP), integrating it into an agentic debugging pipeline that root-causes misconfigured experiments for 1k+ services running experiments",
+        "Architected a Python LLM reviewer for A/B experiment configs across 500 diffs/day, encoding past-incident patterns as lazy-loaded rule packs that cut agent context 50%, and built the eval harness measuring 94% precision and 86% recall"
       ]
     },
     {
       "role": "Machine Learning Research Assistant",
-      "company": "University of Florida — AI Lab",
+      "company": "University of Florida – Agriculture Precision Lab",
       "dates": "Sep 2024 – Sep 2025",
       "bullets": [
-        "Developed GPU-accelerated PyTorch pipelines for dense feature matching, enabling high-throughput 3D inference",
-        "Architected a distributed pipeline consolidating multi-view 3D reconstructions into a unified field-scale model",
+        "Developed GPU-accelerated PyTorch pipelines for dense feature matching, increasing match reliability by 24% in dense foliage and improving multi-view tracking stability",
+        "Architected a pipeline to consolidate 1K+ per-frame multi-view COLMAP reconstructions into a unified 3D field-scale model",
         "Applied monocular depth estimation to densify point clouds, achieving 90%+ data completeness for volumetric analysis"
       ]
     },
@@ -135,9 +140,9 @@ export const portfolio = {
       "company": "FPT Corporation",
       "dates": "May 2025 – Aug 2025",
       "bullets": [
-        "Implemented RESTful APIs in Java Spring Boot with WSO2 mediation policies, deployed with AWS EC2 and Docker, achieving 98% request accuracy and improving response time by 20ms",
-        "Configured and integrated 12+ enterprise microservices using WSO2 API Gateway on Kubernetes, reducing cross-service failures by 20% and increasing production resilience",
-        "Developed custom Java WSO2 handlers for payload encryption/decryption and token validation using JWT and OAuth2, improving gateway throughput by 25%"
+        "Implemented RESTful APIs in Java Spring Boot with WSO2 mediation policies, deployed with AWS EC2, Docker, and monitored via Grafana and Prometheus, achieving 98% request accuracy and improving response time by 20ms",
+        "Configured and integrated 12+ enterprise microservices using WSO2 API Gateway deployed on Kubernetes, reducing cross-service failures by 20% and increasing system resilience in production clusters",
+        "Developed custom Java WSO2 handlers for payload encryption/decryption and token validation using JWT and OAuth2, improving gateway throughput by 25% and enforcing secure, authenticated API communication across teams"
       ]
     },
     {
@@ -152,28 +157,10 @@ export const portfolio = {
     },
     {
       "role": "Teaching Assistant",
-      "company": "University of Florida (Computer Organization & Fundamentals Programming 2)",
+      "company": "University of Florida (Programming, DSA, Algorithm Abstract, Dlog, Databases)",
       "dates": "Aug 2024 – Present",
       "bullets": [
         "Led mini-lectures and structured office hours for 50+ students; section grades averaged 15% higher than other section"
-      ]
-    },
-    {
-      "role": "Software Engineering Fellow",
-      "company": "Uber",
-      "dates": "Feb 2025 – Aug 2025",
-      "bullets": [
-        "Selected for Uber Career Prep Fellowship with a 2.3% acceptance rate by demonstrating data structures and algorithm skills",
-        "Accelerated algorithmic proficiency by working with Uber engineers 1:1 to solve 70+ technical interview problems"
-      ]
-    },
-    {
-      "role": "AI/ML Research Assistant",
-      "company": "Hanoi University of Industry",
-      "dates": "Mar 2023 – Aug 2023",
-      "bullets": [
-        "Co-authored peer-reviewed paper on AI + blockchain in forestry management",
-        "Built a drone/IoT early warning system that enabled 60% faster wildfire detection"
       ]
     }
   ],

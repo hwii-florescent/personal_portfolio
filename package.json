@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "test:layout": "node --experimental-strip-types tests/layout.test.mjs",
+    "test:layout-persistence": "node tests/layout-persistence.test.mjs"
   },
   "dependencies": {
     "@react-three/drei": "^10.7.9",

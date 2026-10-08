@@ -1,77 +1,51 @@
-import { portfolio as p } from "@/data/portfolio";
+import type { CSSProperties } from "react";
+import { BULLET_INDENT, ENTRY_GAP, docFor, style, type Block, type Entry, type Tone } from "@/data/doc";
 import type { SectionId } from "@/data/sections";
 
-const link = "underline decoration-accent underline-offset-4 hover:text-gold";
+// DOM renderer for the shared section design in src/data/doc.ts (the WebGL one is in Panel3D.tsx).
+const tone: Record<Tone, string> = { fg: "var(--color-fg)", muted: "var(--color-muted)", accent: "var(--accent)", gold: "var(--gold)" };
+const family = { sans: "var(--font-inter)", sansMedium: "var(--font-inter)", mono: "var(--font-jetbrains)" };
 
-function Bullets({ items }: { items: readonly string[] }) {
-  return (
-    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-muted">
-      {items.map((b) => <li key={b}>{b}</li>)}
-    </ul>
-  );
+function BlockView({ b, gap }: { b: Block; gap: number }) {
+  const s = style[b.kind];
+  const css: CSSProperties = {
+    marginTop: gap, fontFamily: family[s.font], fontWeight: s.font === "sansMedium" ? 500 : 400, fontSize: s.size,
+    lineHeight: s.line, color: tone[s.tone], letterSpacing: s.track ? `${s.track}em` : undefined, textTransform: s.upper ? "uppercase" : undefined,
+  };
+  const text = b.runs.map((r, i) => (r.tone ? <span key={i} style={{ color: tone[r.tone] }}>{r.t}</span> : r.t));
+  if (b.href) {
+    const ext = b.href.startsWith("http");
+    return (
+      <p style={css}>
+        <a href={b.href} {...(ext && { target: "_blank", rel: "noreferrer" })} className="underline decoration-accent underline-offset-4 hover:text-gold">{text}</a>
+      </p>
+    );
+  }
+  if (b.kind === "bullet") {
+    return (
+      <li style={{ ...css, position: "relative", paddingLeft: BULLET_INDENT, listStyle: "none" }}>
+        <span style={{ position: "absolute", left: 0 }} aria-hidden>•</span>{text}
+      </li>
+    );
+  }
+  return b.kind === "h" ? <h3 style={css}>{text}</h3> : <p style={css}>{text}</p>;
+}
+
+function EntryView({ e, first }: { e: Entry; first: boolean }) {
+  // bullets render inside one <ul>; everything else is a plain block
+  const out: React.ReactNode[] = [];
+  for (let i = 0; i < e.length; i++) {
+    const gap = i === 0 ? 0 : style[e[i].kind].gap;
+    if (e[i].kind !== "bullet") { out.push(<BlockView key={i} b={e[i]} gap={gap} />); continue; }
+    let j = i;
+    while (j < e.length && e[j].kind === "bullet") j++;
+    out.push(<ul key={i} style={{ marginTop: gap }}>{e.slice(i, j).map((b, k) => <BlockView key={k} b={b} gap={k ? style.bullet.gap : 0} />)}</ul>);
+    i = j - 1;
+  }
+  return <div style={{ marginTop: first ? 0 : ENTRY_GAP }}>{out}</div>;
 }
 
 /** Server-safe: used in the HUD panel and, for all sections, in the sr-only SEO copy. */
 export function SectionBody({ id }: { id: SectionId }) {
-  switch (id) {
-    case "experience":
-      return (
-        <ul className="space-y-8">
-          {p.experience.map((e) => (
-            <li key={e.role + e.dates}>
-              <h3 className="font-medium text-fg">{e.role} · <span className="text-accent">{e.company}</span></h3>
-              <p className="font-mono text-xs text-muted">{e.dates}</p>
-              <Bullets items={e.bullets} />
-            </li>
-          ))}
-        </ul>
-      );
-    case "projects":
-      return (
-        <ul className="space-y-5">
-          {p.projects.map((pr) => (
-            <li key={pr.name} className="border-l-2 border-primary pl-4">
-              <h3 className="font-medium text-fg">{pr.name}</h3>
-              {pr.award && <p className="text-xs text-gold">{pr.award}</p>}
-              <p className="mt-1 text-sm text-muted">{pr.desc}</p>
-              <p className="mt-2 font-mono text-xs text-accent">{pr.tech.join(" · ")}</p>
-              <a className={`mt-2 inline-block text-sm ${link}`} href={pr.github} target="_blank" rel="noreferrer">GitHub</a>
-            </li>
-          ))}
-        </ul>
-      );
-    case "skills":
-      return (
-        <dl className="space-y-5 text-sm">
-          {p.skills.map((s) => (
-            <div key={s.cat}>
-              <dt className="font-mono text-xs uppercase tracking-widest text-accent">{s.cat}</dt>
-              <dd className="mt-1 flex flex-wrap gap-2">
-                {s.items.map((i) => <span key={i} className="border border-accent/30 px-2 py-0.5 text-xs">{i}</span>)}
-              </dd>
-            </div>
-          ))}
-        </dl>
-      );
-    case "leadership":
-      return (
-        <>
-          {p.leadership.map((l) => (
-            <div key={l.role}>
-              <h3 className="font-medium text-fg">{l.role} · <span className="text-accent">{l.org}</span></h3>
-              <p className="font-mono text-xs text-muted">{l.dates}</p>
-              <Bullets items={l.bullets} />
-            </div>
-          ))}
-        </>
-      );
-    case "contact":
-      return (
-        <ul className="space-y-2 text-sm">
-          {p.contact.map((c) => (
-            <li key={c.href}><a className={link} href={c.href}>{c.label}</a></li>
-          ))}
-        </ul>
-      );
-  }
+  return <>{docFor(id).map((e, i) => <EntryView key={i} e={e} first={i === 0} />)}</>;
 }
