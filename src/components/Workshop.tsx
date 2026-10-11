@@ -1,7 +1,7 @@
 "use client";
 
 // The room around the holograms: an engineer's steel workbench in front (keyboard, mouse, headset), a wall behind
-// (pegboard tools, figure shelves, neon sign, picture frame, hanging lamp). All procedural (primitives + canvas textures): no assets to license.
+// (pegboard tools, character collectibles, neon sign, picture frame, hanging lamp). Procedural geometry and painted textures.
 import { useMemo } from "react";
 import { Environment, Lightformer, Text, useGLTF } from "@react-three/drei";
 import { Box3, CanvasTexture, RepeatWrapping, SRGBColorSpace, Vector3 } from "three";
@@ -99,13 +99,13 @@ function Wall({ p }: { p: Palette }) {
         <Box at={[0.3, -0.3, 0]} size={[0.5, 0.16, 0.03]} color="#a8adb3" metal={0.7} rough={0.4} />
       </group>
       {[1.75, 0.95].map((y) => <Box key={y} at={[-4.85, y, -3.4]} size={[2.9, 0.05, 0.3]} color="#4a3320" rough={0.55} />)}
-      <Figure at={[-6.0, 1.775, -3.4]} kind="hero" color="#c23b2a" accent="#2d4fb0" rotY={0.3} />
-      <Figure at={[-5.45, 1.775, -3.4]} kind="robot" color="#3b4a5a" accent={p.accent} />
-      <Figure at={[-4.9, 1.775, -3.4]} kind="mage" color="#5b3a7a" accent="#3a2a8a" h={0.36} />
+      <Figure at={[-6.0, 1.775, -3.4]} character="miles" h={0.62} rotY={0.22} />
+      <Figure at={[-5.45, 1.775, -3.4]} character="luffy" rotY={0.12} />
+      <Figure at={[-4.9, 1.775, -3.4]} character="zoro" />
       <Handheld at={[-4.25, 1.775, -3.4]} rotY={-0.2} />
-      <Figure at={[-3.75, 1.775, -3.4]} kind="cat" color="#e0a020" accent="#e0a020" h={0.34} rotY={-0.3} />
-      <Figure at={[-5.9, 0.975, -3.4]} kind="robot" color="#7a3a30" accent={p.primary} h={0.34} />
-      <Figure at={[-5.25, 0.975, -3.4]} kind="hero" color="#2d4fb0" accent="#c23b2a" rotY={0.2} />
+      <Figure at={[-3.75, 1.775, -3.4]} character="chopper" h={0.52} rotY={-0.18} />
+      <Figure at={[-5.9, 0.975, -3.4]} character="chopper" h={0.52} rotY={0.15} />
+      <Figure at={[-5.25, 0.975, -3.4]} character="miles" rotY={0.2} />
       <Box at={[-4.5, 1.1, -3.4]} size={[0.5, 0.2, 0.28]} color="#4d3b4f" />
       <Box at={[-4.45, 1.28, -3.4]} size={[0.44, 0.16, 0.26]} color="#38503f" />
       <Duck at={[-3.7, 0.975, -3.4]} rotY={0.3} />
@@ -121,10 +121,10 @@ function Wall({ p }: { p: Palette }) {
       {/* right: shelving unit with figures, a GPU, books, a console */}
       {[2.55, 6.5].map((x) => <Box key={x} at={[x, 2, -3.35]} size={[0.08, 4, 0.45]} color="#2a2f36" metal={0.6} />)}
       {[0.9, 1.9, 2.9].map((y) => <Box key={y} at={[4.52, y - 0.02, -3.35]} size={[4.05, 0.06, 0.5]} color="#4a3320" rough={0.55} />)}
-      <Figure at={[3.0, 2.91, -3.3]} kind="hero" color="#2d4fb0" accent="#c23b2a" />
-      <Figure at={[3.6, 2.91, -3.3]} kind="robot" color="#6b747d" accent={p.accent} />
-      <Figure at={[4.2, 2.91, -3.3]} kind="cat" color="#4d3b4f" accent="#d9d4cc" h={0.36} />
-      <Figure at={[4.8, 2.91, -3.3]} kind="mage" color="#38503f" accent="#7a3a30" />
+      <Figure at={[3.0, 2.91, -3.3]} character="miles" h={0.62} rotY={-0.15} />
+      <Figure at={[3.6, 2.91, -3.3]} character="luffy" rotY={-0.12} />
+      <Figure at={[4.2, 2.91, -3.3]} character="chopper" h={0.52} />
+      <Figure at={[4.8, 2.91, -3.3]} character="zoro" rotY={-0.18} />
       <mesh position={[5.6, 3.1, -3.3]}>
         <icosahedronGeometry args={[0.2, 0]} />
         <meshStandardMaterial color="#9aa3ad" metalness={0.8} roughness={0.3} />
@@ -136,9 +136,9 @@ function Wall({ p }: { p: Palette }) {
       ))}
       <CableCoil at={[5.75, 1.99, -3.3]} />
       <Box at={[3.1, 1.08, -3.3]} size={[0.34, 0.3, 0.34]} color="#1a1e24" metal={0.5} rough={0.4} />
-      <Figure at={[4.0, 0.93, -3.3]} kind="hero" color="#c23b2a" accent="#2d4fb0" h={0.38} rotY={-0.2} />
+      <Figure at={[4.0, 0.93, -3.3]} character="luffy" rotY={-0.2} />
       <Box at={[4.85, 1.07, -3.3]} size={[0.55, 0.26, 0.35]} color="#3b4a5a" rough={0.9} />
-      <Figure at={[5.6, 0.93, -3.3]} kind="robot" color="#aab3bd" accent={p.primary} h={0.34} />
+      <Figure at={[5.6, 0.93, -3.3]} character="miles" rotY={-0.25} />
     </>
   );
 }

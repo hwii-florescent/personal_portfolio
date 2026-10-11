@@ -1,9 +1,9 @@
 "use client";
 
 // Procedural set dressing for the engineer's workspace: primitives plus keyboard, mouse, headset, figures,
-// GPU, handheld and bench tools. Everything is built from boxes/cylinders/spheres, so there are no assets to license.
-import { useCallback } from "react";
-import { Color, Object3D, type InstancedMesh } from "three";
+// GPU, handheld and bench tools. Character collectibles are original procedural fan-art, not official product assets.
+import { useCallback, useEffect, useMemo } from "react";
+import { CanvasTexture, Color, Object3D, SRGBColorSpace, type InstancedMesh } from "three";
 import type { Palette } from "@/data/themes";
 
 export type V3 = [number, number, number];
@@ -127,45 +127,143 @@ export function Duck({ at, rotY = 0 }: { at: V3; rotY?: number }) {
   );
 }
 
-/** Collectible figure on a plinth, ~`h` tall. kind picks the silhouette. */
-export function Figure({ at, kind, color, accent, h = 0.4, rotY = 0 }: { at: V3; kind: "hero" | "robot" | "cat" | "mage"; color: string; accent: string; h?: number; rotY?: number }) {
+export type FigureCharacter = "miles" | "luffy" | "zoro" | "chopper";
+
+/** Painted vinyl face, wrapped around the head rather than floating in front of it. */
+function figureFace(character: FigureCharacter) {
+  const canvas = document.createElement("canvas");
+  canvas.width = 512; canvas.height = 256;
+  const g = canvas.getContext("2d")!;
+  g.fillStyle = character === "miles" ? "#151923" : character === "chopper" ? "#c99159" : "#f3c79f";
+  g.fillRect(0, 0, 512, 256);
+  g.lineCap = "round"; g.lineJoin = "round";
+  if (character === "miles") {
+    g.strokeStyle = "#a7283e"; g.lineWidth = 1.5;
+    // Fine red webbing reads as a printed suit, not glowing circuitry.
+    for (let x = 0; x <= 512; x += 32) {
+      g.beginPath(); g.moveTo(256, 18); g.lineTo(x, 256); g.stroke();
+    }
+    for (const y of [64, 96, 128, 160, 192, 224]) {
+      g.beginPath(); g.moveTo(0, y);
+      for (let x = 0; x < 512; x += 32) g.quadraticCurveTo(x + 16, y + 12, x + 32, y);
+      g.stroke();
+    }
+    for (const side of [-1, 1]) {
+      g.save(); g.translate(256, 127); g.scale(side, 1);
+      g.beginPath(); g.moveTo(12, 15); g.quadraticCurveTo(15, -2, 48, -30);
+      g.quadraticCurveTo(54, 16, 26, 24); g.closePath();
+      g.strokeStyle = "#ef334c"; g.lineWidth = 8; g.stroke();
+      g.fillStyle = "#fffaf2"; g.fill(); g.restore();
+    }
+  } else {
+    g.fillStyle = "#241c1c";
+    for (const x of [229, 283]) {
+      if (character === "zoro" && x === 283) {
+        g.strokeStyle = "#5d3d31"; g.lineWidth = 3;
+        g.beginPath(); g.moveTo(x - 7, 128); g.lineTo(x + 7, 130); g.stroke();
+        g.beginPath(); g.moveTo(x + 2, 109); g.lineTo(x - 2, 145); g.stroke();
+      } else {
+        g.beginPath(); g.ellipse(x, 128, 7, 12, 0, 0, Math.PI * 2); g.fill();
+        g.fillStyle = "#fff9eb"; g.beginPath(); g.arc(x - 2, 124, 2, 0, Math.PI * 2); g.fill();
+        g.fillStyle = "#241c1c";
+      }
+    }
+    g.strokeStyle = "#6b3d30"; g.lineWidth = 2.5;
+    g.beginPath(); g.moveTo(242, 151); g.quadraticCurveTo(256, 163, 270, 151); g.stroke();
+    if (character === "luffy") {
+      g.fillStyle = "#fff8df"; g.beginPath(); g.moveTo(236, 149);
+      g.quadraticCurveTo(256, 158, 276, 149); g.quadraticCurveTo(256, 180, 236, 149); g.fill(); g.stroke();
+      g.beginPath(); g.moveTo(278, 145); g.lineTo(292, 145); g.stroke();
+      for (const x of [282, 289]) { g.beginPath(); g.moveTo(x, 142); g.lineTo(x, 148); g.stroke(); }
+    }
+    if (character === "chopper") {
+      g.fillStyle = "#4099cd"; g.beginPath(); g.ellipse(256, 143, 6, 4, 0, 0, Math.PI * 2); g.fill();
+    }
+  }
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  return texture;
+}
+
+/** Original chibi collectibles: oversized heads, satin vinyl, and character-specific silhouettes. */
+export function Figure({ at, character, h = 0.58, rotY = 0 }: { at: V3; character: FigureCharacter; h?: number; rotY?: number }) {
+  const face = useMemo(() => figureFace(character), [character]);
+  useEffect(() => () => face.dispose(), [face]);
+  const miles = character === "miles", chopper = character === "chopper";
+  const skin = chopper ? "#c99159" : "#f3c79f";
+  const outfit = miles ? "#151923" : character === "luffy" ? "#d93639" : character === "zoro" ? "#39785b" : "#e67b92";
   return (
-    <group position={at} rotation-y={rotY} scale={h / 0.4}>
-      <Cyl at={[0, 0.01, 0]} r={0.1} h={0.02} color="#1a1d22" />
-      {[-0.035, 0.035].map((x) => <Box key={x} at={[x, 0.07, 0]} size={[0.05, 0.1, 0.05]} color="#2b3340" />)}
-      <Box at={[0, 0.18, 0]} size={[0.15, 0.12, 0.09]} color={color} rough={0.5} />
-      {[-0.095, 0.095].map((x) => <Box key={x} at={[x, 0.18, 0]} size={[0.035, 0.1, 0.04]} color={color} rough={0.5} />)}
-      {kind === "robot" ? (
-        <>
-          <Box at={[0, 0.31, 0]} size={[0.16, 0.13, 0.13]} color="#aab3bd" metal={0.6} rough={0.35} />
-          <Glow at={[0, 0.315, 0.066]} size={[0.11, 0.035, 0.004]} color={accent} />
-          <Cyl at={[0, 0.42, 0]} r={0.008} h={0.08} color="#aab3bd" metal={0.6} />
-          <Ball at={[0, 0.465, 0]} r={0.018} color={accent} />
-        </>
-      ) : (
-        <>
-          <Ball at={[0, 0.31, 0]} r={0.09} color={kind === "cat" ? "#d9d4cc" : "#e8c9a8"} />
-          {kind === "hero" && (
-            <>
-              <Box at={[0, 0.34, 0.01]} size={[0.17, 0.06, 0.15]} color={accent} rough={0.5} />
-              <Box at={[0, 0.2, -0.06]} size={[0.16, 0.16, 0.015]} color={accent} rough={0.7} />
-              {[-0.03, 0.03].map((x) => <Glow key={x} at={[x, 0.31, 0.085]} size={[0.035, 0.02, 0.004]} color="#ffffff" />)}
-            </>
-          )}
-          {kind === "cat" && [-0.05, 0.05].map((x) => (
-            <mesh key={x} position={[x, 0.4, 0]} rotation-z={x > 0 ? -0.25 : 0.25}>
-              <coneGeometry args={[0.035, 0.07, 4]} />
-              <meshStandardMaterial color="#d9d4cc" roughness={0.6} />
-            </mesh>
-          ))}
-          {kind === "mage" && (
-            <mesh position={[0, 0.44, 0]}>
-              <coneGeometry args={[0.1, 0.17, 16]} />
-              <meshStandardMaterial color={accent} roughness={0.6} />
-            </mesh>
-          )}
-        </>
-      )}
+    <group name={`collectible-${character}`} position={at} rotation-y={rotY} scale={h / 0.5}>
+      <Cyl at={[0, 0.012, 0]} r={0.13} h={0.024} color="#252933" rough={0.4} />
+      {[-1, 1].map((side) => (
+        <group key={side}>
+          <Ball at={[side * 0.043, 0.045, 0.02]} r={1} scale={[0.035, 0.025, 0.053]} color={miles ? "#e13349" : chopper ? "#70412e" : "#453029"} rough={0.4} />
+          <Ball at={[side * 0.041, 0.088, 0]} r={1} scale={[0.032, 0.057, 0.033]} color={miles ? "#151923" : character === "luffy" ? "#4884bd" : character === "zoro" ? "#263f37" : skin} rough={0.4} />
+          {character === "luffy" && <Cyl at={[side * 0.041, 0.08, 0]} r={0.033} h={0.022} color="#fff0c9" />}
+          <group position={[side * 0.093, 0.178, 0]} rotation-z={side * 0.24}>
+            <Ball at={[0, 0, 0]} r={1} scale={[0.033, 0.06, 0.035]} color={outfit} rough={0.38} />
+            <Ball at={[0, -0.048, 0.008]} r={0.029} color={miles ? "#df3048" : skin} rough={0.4} />
+          </group>
+        </group>
+      ))}
+      <Ball at={[0, 0.176, 0]} r={1} scale={[0.079, 0.086, 0.057]} color={outfit} rough={0.38} />
+      {character === "luffy" && <>
+        <Ball at={[0, 0.188, 0.052]} r={1} scale={[0.033, 0.06, 0.012]} color={skin} />
+        <Box at={[0, 0.126, 0.055]} size={[0.13, 0.02, 0.012]} color="#edbf45" />
+        {[0.16, 0.195, 0.23].map((y) => <Ball key={y} at={[-0.037, y, 0.051]} r={0.006} color="#edbf45" />)}
+      </>}
+      {miles && <group name="spider-emblem" position={[0, 0.192, 0.057]}>
+        <Ball at={[0, 0, 0]} r={1} scale={[0.012, 0.023, 0.004]} color="#ed334b" />
+        {[-1, 1].flatMap((side) => [0, 1, 2, 3].map((i) => (
+          <group key={`${side}-${i}`} position={[side * 0.021, 0.018 - i * 0.012, 0]} rotation-z={side * (i < 2 ? -0.65 : 0.65)}>
+            <Box at={[0, 0, 0]} size={[0.04, 0.006, 0.004]} color="#ed334b" />
+          </group>
+        )))}
+      </group>}
+      {character === "zoro" && <>
+        <Box at={[0, 0.13, 0.055]} size={[0.145, 0.025, 0.018]} color="#a52842" />
+        <group name="three-swords" position={[0.106, 0.14, -0.02]} rotation-z={-0.5}>
+          {["#f1e8d6", "#673e66", "#242832"].map((color, i) => <group key={color} position={[i * 0.019, 0, 0]}>
+            <Cyl at={[0, -0.045, 0]} r={0.009} h={0.17} color={color} />
+            <Cyl at={[0, 0.062, 0]} r={0.01} h={0.04} color="#25232e" />
+            <Cyl at={[0, 0.04, 0]} r={0.02} h={0.007} color="#dab564" />
+          </group>)}
+        </group>
+      </>}
+      {!miles && [-1, 1].map((side) => <Ball key={side} at={[side * 0.117, 0.326, 0]} r={0.025} color={skin} rough={0.4} />)}
+      <mesh name="painted-head" position={[0, 0.344, 0]} rotation-y={-Math.PI / 2} scale={[1, 1.03, 0.93]}>
+        <sphereGeometry args={[0.124, 32, 24]} />
+        <meshStandardMaterial map={face} roughness={0.36} />
+      </mesh>
+      {(character === "luffy" || character === "zoro") && <>
+        <mesh position={[0, 0.35, -0.006]}>
+          <sphereGeometry args={[0.128, 24, 16, 0, Math.PI * 2, 0, 1.05]} />
+          <meshStandardMaterial color={character === "zoro" ? "#69a65d" : "#20202a"} roughness={0.45} />
+        </mesh>
+        {[-0.085, -0.045, 0, 0.045, 0.085].map((x, i) => <Ball key={x} at={[x, 0.416 - Math.abs(x) * 0.35, 0.074]} r={1} scale={[0.025, 0.035 + (i % 2) * 0.009, 0.026]} color={character === "zoro" ? "#69a65d" : "#20202a"} rough={0.45} />)}
+      </>}
+      {character === "luffy" && <group name="straw-hat" rotation-z={-0.08} position={[0, 0.432, -0.008]}>
+        <Cyl at={[0, 0, 0]} r={0.162} h={0.018} color="#eac679" rough={0.65} />
+        <Ball at={[0, 0.008, 0]} r={1} scale={[0.108, 0.055, 0.105]} color="#eac679" rough={0.65} />
+        <Cyl at={[0, 0.019, 0]} r={0.107} h={0.018} color="#ce343c" rough={0.45} />
+      </group>}
+      {character === "zoro" && [-0.012, 0, 0.012].map((z) => <mesh key={z} position={[-0.132, 0.309, z]}>
+        <torusGeometry args={[0.012, 0.003, 6, 12]} />
+        <meshStandardMaterial color="#e9c363" metalness={0.45} roughness={0.35} />
+      </mesh>)}
+      {chopper && <group name="chopper-hat">
+        {[-1, 1].map((side) => <group key={side} position={[side * 0.126, 0.411, -0.01]} rotation-z={side * -0.5}>
+          <Cyl at={[0, 0.02, 0]} r={0.013} h={0.085} color="#754730" />
+          {[-1, 1].map((branch) => <Cyl key={branch} at={[branch * 0.018, 0.042, 0]} r={0.009} h={0.044} color="#754730" rot={[0, 0, branch * -0.8]} />)}
+        </group>)}
+        <Cyl at={[0, 0.415, 0]} r={0.147} h={0.024} color="#de7b9c" rough={0.4} />
+        <Cyl at={[0, 0.455, 0]} r={0.112} h={0.08} color="#de7b9c" rough={0.4} />
+        <Cyl at={[0, 0.495, 0]} r={0.113} h={0.01} color="#de7b9c" rough={0.4} />
+        <group position={[0, 0.455, 0.113]}>
+          <Box at={[0, 0, 0]} size={[0.054, 0.014, 0.005]} color="#fff5e9" rot={[0, 0, Math.PI / 4]} />
+          <Box at={[0, 0, 0]} size={[0.054, 0.014, 0.005]} color="#fff5e9" rot={[0, 0, -Math.PI / 4]} />
+        </group>
+      </group>}
     </group>
   );
 }
