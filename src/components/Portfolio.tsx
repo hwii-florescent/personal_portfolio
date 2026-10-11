@@ -9,6 +9,7 @@ import SceneLoader from "./SceneLoader";
 import Boot from "./Boot";
 import { AiLine, Overview, TopBar } from "./Hud";
 import { LayoutProvider } from "./LayoutEditor";
+import { MonitorFace } from "./HtmlPanel";
 import { viewOf, type Layout } from "@/data/layout";
 
 const mq = "(prefers-reduced-motion: reduce)";
@@ -35,6 +36,7 @@ export default function Portfolio({ layout }: { layout: Layout }) {
 
   const p = themes[theme];
   const voice = lines[theme];
+  const faceRef = useRef<HTMLDivElement>(null); // the 3D monitor's DOM, placed over the canvas by the scene each frame
   const opener = useRef<HTMLElement | null>(null); // what had focus before the panel opened, to restore on close
   const select = useCallback((id: SectionId | null) => {
     if (id && !opener.current) opener.current = document.activeElement as HTMLElement | null;
@@ -66,7 +68,8 @@ export default function Portfolio({ layout }: { layout: Layout }) {
         else if ((id === "mobile-section" || viewOf(id) === "section") && !active) select("experience");
       }}>
       <div className="absolute inset-0">
-        <SceneLoader p={p} active={active} onSelectAction={select} motion={reduced ? 0 : 1} panel3d={in3d} />
+        <SceneLoader p={p} active={active} onSelectAction={select} motion={reduced ? 0 : 1} panel3d={in3d} faceRef={faceRef} />
+        {in3d && <MonitorFace ref={faceRef} active={active} onCloseAction={() => select(null)} />}
       </div>
       <div className="vignette pointer-events-none absolute inset-0" />
       <div className="scanlines pointer-events-none absolute inset-0 opacity-40" />

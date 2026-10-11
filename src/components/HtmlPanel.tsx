@@ -1,12 +1,14 @@
 "use client";
 
-// Panels placed in the 3D scene: real DOM (selectable, accessible) positioned by drei <Html transform>,
-// inside a thin glowing frame so they read as hologram monitors. Below md the flat PanelShell is used instead.
+// Panels placed in the 3D scene: real DOM (selectable, accessible) laid over the canvas, inside a thin glowing WebGL frame so they read as
+// hologram monitors. Below md the flat PanelShell is used instead.
 // One monitor: at home it shows the profile out in the room; when a section opens it flies to the camera and the pads line up on the bench.
-import { Html } from "@react-three/drei";
+// The DOM face is a plain sibling of the canvas: each frame the monitor's four corners are projected and the face is mapped onto that
+// screen quad with one 2D homography. No CSS 3D context (preserve-3d / perspective), which Safari composites unreliably.
 import { useFrame, useThree } from "@react-three/fiber";
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { MathUtils, Quaternion, Vector3, type Group, type Intersection, type Mesh } from "three";
+import { useMemo, useRef, useState, type CSSProperties, type ReactNode, type Ref, type RefObject } from "react";
+import { MathUtils, Quaternion, Vector3, type Group, type Mesh } from "three";
+import { quadToCss } from "@/lib/quad";
 import { PANEL } from "@/data/doc";
 import type { Palette } from "@/data/themes";
 import { sections, type SectionId } from "@/data/sections";
@@ -21,16 +23,8 @@ const K = WORLD_W / PANEL.w; // world units per CSS px (shared by every panel so
 const DEPTH = 0.015; // slab thickness (world units): thin glass, not a monitor
 const FRAME = 0.01; // bezel bar width
 const UP = new Vector3(0, 1, 0);
-
-// drei <Html> sits inside R3F's event root, so pointer events on the monitor's DOM bubble up and get raycast *through* the panel
-// onto the invisible pad hit targets behind it (hover/click on the empty part of the panel hit a pad). While the pointer is over the panel, drop all hits.
-const panel = { over: false };
-const ignoreBehindPanel = (hits: Intersection[]) => (panel.over ? [] : hits);
-function PanelEventGuard() {
-  const setEvents = useThree((s) => s.setEvents);
-  useEffect(() => { setEvents({ filter: ignoreBehindPanel }); return () => setEvents({ filter: undefined }); }, [setEvents]);
-  return null;
-}
+const CORNERS = [[-1, 1], [1, 1], [1, -1], [-1, -1]] as const; // top-left, top-right, bottom-right, bottom-left
+const v = new Vector3();
 
 // The camera never leaves this pose (Rig adds only mouse parallax); the open monitor and the pad row are placed relative to it.
 export const CAM = { pos: [0, 1.8, 5.2], at: [0, 1, 0] } as const;
@@ -82,9 +76,9 @@ export function useFocusPose(): FocusPose {
 /** One framed hologram panel: translucent slab + glowing bezel, with a PanelShell face.
  *  Home and section view each have their own layout (`profile` / `monitor-open`: offset, yaw, width, height). `k` blends the two world poses,
  *  so the flight, swivel and resize all animate between whatever the two layouts say. */
-function HoloPanel({ p, scale = 1, position, yaw, lean = 0, focus, open, children }: {
+function HoloPanel({ p, scale = 1, position, yaw, lean = 0, focus, open, faceRef }: {
   p: Palette; scale?: number; lean?: number; position: [number, number, number]; yaw: number;
-  focus: FocusPose["monitor"]; open: boolean; children: ReactNode;
+  focus: FocusPose["monitor"]; open: boolean; faceRef: RefObject<HTMLDivElement | null>;
 }) {
   const editor = useLayout();
   const id = open ? "monitor-open" : "profile";
@@ -94,16 +88,14 @@ function HoloPanel({ p, scale = 1, position, yaw, lean = 0, focus, open, childre
   const tCur = open ? tOpen : tHome; // the wrapper (Editable3D) currently in use
   const base = open ? focus.pos : position;
   const fly = useRef<Group>(null);
-  const box = useRef<HTMLDivElement>(null);
   const slab = useRef<Mesh>(null);
   const bar = { top: useRef<Mesh>(null), bottom: useRef<Mesh>(null), left: useRef<Mesh>(null), right: useRef<Mesh>(null) };
   const k = useRef(0); // 0 = out in the room (home layout), 1 = in front of the camera (section layout)
   const q = useRef({ a: new Quaternion(), b: new Quaternion(), c: new Quaternion() });
   const [start] = useState<[number, number, number]>(() => [lean, yaw, 0]);
   const dims = (t: Transform) => [PANEL.w * (t.width ?? 1), PANEL.h * (t.height ?? 1)] as const;
-  const [w0, h0] = dims(tHome);
 
-  useFrame((_, dt) => {
+  useFrame(({ camera, size }, dt) => {
     const g = fly.current;
     if (!g) return;
     k.current = MathUtils.damp(k.current, open ? 1 : 0, 3.2, dt);
@@ -125,8 +117,6 @@ function HoloPanel({ p, scale = 1, position, yaw, lean = 0, focus, open, childre
     // size: the DOM box and the bezel follow the blended width/height
     const [wa, ha] = dims(tHome), [wb, hb] = dims(tOpen);
     const w = L(wa, wb, f), h = L(ha, hb, f);
-    const el = box.current;
-    if (el) { el.style.width = `${w}px`; el.style.height = `${h}px`; }
     const W = w * K, H = h * K;
     slab.current?.scale.set(W, H, DEPTH);
     bar.top.current?.scale.set(W + 2 * FRAME, FRAME, DEPTH * 1.6);
@@ -137,6 +127,30 @@ function HoloPanel({ p, scale = 1, position, yaw, lean = 0, focus, open, childre
     bar.left.current?.position.set(-(W + FRAME) / 2, 0, 0);
     bar.right.current?.scale.set(FRAME, H, DEPTH * 1.6);
     bar.right.current?.position.set((W + FRAME) / 2, 0, 0);
+    // DOM face: same frame as the camera (Rig runs first) and the pose above, so it can't drift from its frame.
+    const el = faceRef.current;
+    if (!el) return;
+    g.updateWorldMatrix(true, false);
+    camera.updateMatrixWorld();
+    const quad: [number, number][] = [];
+    for (const [sx, sy] of CORNERS) {
+      v.set((sx * W) / 2, (sy * H) / 2, 0).applyMatrix4(g.matrixWorld).applyMatrix4(camera.matrixWorldInverse);
+      if (v.z > -camera.near) break; // a corner behind the camera: hide rather than fold through infinity
+      v.applyMatrix4(camera.projectionMatrix);
+      quad.push([((v.x + 1) / 2) * size.width, ((1 - v.y) / 2) * size.height]);
+    }
+    // WebKit mispaints projective matrices with large screen translations baked in. Keep the matrix local to the top-left corner;
+    // left/top position the face separately. The resulting screen quad is identical, without the disappearing/edge-on panel.
+    const [x, y] = quad[0] ?? [0, 0];
+    const css = quad.length === 4 ? quadToCss(w, h, quad.map(([qx, qy]) => [qx - x, qy - y])) : null;
+    el.style.width = `${w}px`;
+    el.style.height = `${h}px`;
+    el.style.visibility = css ? "" : "hidden";
+    if (css) {
+      el.style.left = `${x}px`;
+      el.style.top = `${y}px`;
+      el.style.transform = css;
+    }
   });
   return (
     <Editable3D id={id} position={base}>
@@ -153,15 +167,6 @@ function HoloPanel({ p, scale = 1, position, yaw, lean = 0, focus, open, childre
           </mesh>
         ))}
       </group>
-      {/* drei: 400 / distanceFactor CSS px per world unit */}
-      <Html transform distanceFactor={400 * K} zIndexRange={[0, 0]}>
-        {/* DOM sits above the canvas: fade the selected panel so its move/resize handles show through */}
-        <div
-          ref={box}
-          onPointerMove={() => { panel.over = true; }} onPointerDown={() => { panel.over = true; }} onPointerLeave={() => { panel.over = false; }}
-          style={{ width: w0, height: h0, opacity: editor?.editing && editor.selected === id ? 0.3 : 1 }}
-        >{children}</div>
-      </Html>
     </group>
     </Editable3D>
   );
@@ -198,17 +203,26 @@ function Swipe({ screen, onClose, interactive }: { screen: Screen; onClose: () =
   );
 }
 
-export default function Monitor({ p, active, onCloseAction }: { p: Palette; active: SectionId | null; onCloseAction: () => void }) {
+/** In the canvas: the monitor's frame. It also places `faceRef` (MonitorFace, rendered next to the canvas) every frame. */
+export default function Monitor({ p, active, faceRef }: { p: Palette; active: SectionId | null; faceRef: RefObject<HTMLDivElement | null> }) {
   const aspect = useThree((s) => s.size.width / s.size.height);
   const pose = useFocusPose();
-  const editing = useLayout()?.editing;
-  const open = active !== null;
+  return <HoloPanel p={p} scale={homeScale(aspect)} lean={HOME.lean} yaw={HOME.yaw} position={homePos(aspect)} focus={pose.monitor} open={active !== null} faceRef={faceRef} />;
+}
+
+/** Outside the canvas (a sibling over it): the monitor's DOM. Hidden until Monitor has placed it. Not inside R3F's event root, so
+ *  pointer events on it never raycast through to the pads behind. */
+export function MonitorFace({ ref, active, onCloseAction }: { ref: Ref<HTMLDivElement>; active: SectionId | null; onCloseAction: () => void }) {
+  const editor = useLayout();
+  const editing = !!editor?.editing;
+  // fade the selected panel and let the pointer through, so its move/resize handles (in WebGL, underneath) work
+  const selected = editing && editor.selected === (active ? "monitor-open" : "profile");
   return (
-    <>
-    <PanelEventGuard />
-    <HoloPanel p={p} scale={homeScale(aspect)} lean={HOME.lean} yaw={HOME.yaw} position={homePos(aspect)} focus={pose.monitor} open={open}>
-      <Swipe screen={open ? active : "profile"} onClose={onCloseAction} interactive={!editing} />
-    </HoloPanel>
-    </>
+    <div ref={ref} style={{
+      position: "absolute", left: 0, top: 0, width: PANEL.w, height: PANEL.h, transformOrigin: "0 0", visibility: "hidden",
+      opacity: selected ? 0.3 : 1, pointerEvents: editing ? "none" : undefined,
+    }}>
+      <Swipe screen={active ?? "profile"} onClose={onCloseAction} interactive={!editing} />
+    </div>
   );
 }

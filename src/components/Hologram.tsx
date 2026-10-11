@@ -16,7 +16,7 @@ const vertex = /* glsl */ `
   varying vec3 vN; varying vec3 vV; varying float vY;
   void main() {
     vec4 mv = modelViewMatrix * vec4(position, 1.0);
-    vN = normalize(normalMatrix * normal);
+    vN = normalMatrix * normal;
     vV = -mv.xyz;
     vY = (modelMatrix * vec4(position, 1.0)).y;
     gl_Position = projectionMatrix * mv;
@@ -25,7 +25,9 @@ const fragment = /* glsl */ `
   uniform float uTime; uniform vec3 uColor; uniform float uOpacity;
   varying vec3 vN; varying vec3 vV; varying float vY;
   void main() {
-    float fres = pow(1.0 - abs(dot(normalize(vN), normalize(vV))), 2.2);
+    // Guard zero normals and rounding above 1: pow(negative, 2.2) can poison the HDR bloom buffer with NaN.
+    float facing = abs(dot(vN, vV)) / max(length(vN) * length(vV), 1e-6);
+    float fres = pow(clamp(1.0 - facing, 0.0, 1.0), 2.2);
     float scan = 0.6 + 0.4 * sin(vY * 70.0 - uTime * 3.0);
     float band = smoothstep(0.0, 1.0, 1.0 - abs(fract(vY * 0.45 - uTime * 0.2) - 0.5) * 9.0);
     float a = ((0.05 + fres * 0.65) * scan + band * 0.18) * uOpacity;

@@ -3,9 +3,9 @@
 import { Canvas, useFrame, type ThreeEvent } from "@react-three/fiber";
 import { PerformanceMonitor, Sparkles, Text, useGLTF } from "@react-three/drei";
 import { Bloom, EffectComposer } from "@react-three/postprocessing";
-import { MathUtils, AdditiveBlending, Color, DoubleSide, Vector3, type Group, type Mesh } from "three";
+import { MathUtils, AdditiveBlending, Color, DoubleSide, Vector3, type Group, type Mesh, type Points, type ShaderMaterial } from "three";
 import { timer, TimerTick } from "@/lib/timer";
-import { Suspense, useRef, useState } from "react";
+import { Suspense, useRef, useState, type RefObject } from "react";
 import { sections, type SectionId } from "@/data/sections";
 import type { Palette } from "@/data/themes";
 import Hologram from "./Hologram";
@@ -17,6 +17,14 @@ import { identity } from "@/data/layout";
 
 const FONT = "/fonts/Orbitron.ttf";
 const UP = new Vector3(0, 1, 0);
+// Bound drei's singular sparkle alpha before it reaches the HDR buffer; nonfinite values can spread through Bloom's mip chain.
+// ponytail: shader-text patch for the installed drei version; tests/quad.test.mjs catches upstream changes. Prefer an upstream fix on upgrade.
+const clampSparkles = (pts: Points | null) => {
+  const m = pts?.material as ShaderMaterial | undefined;
+  if (!m) return;
+  m.fragmentShader = m.fragmentShader.replace("0.05 / distanceToCenter - 0.1", "clamp(0.05 / max(distanceToCenter, 1e-4) - 0.1, 0.0, 1.0)");
+  m.needsUpdate = true;
+};
 [...sections.map((s) => s.model), "/models/mug.glb", "/models/pens.glb"].forEach((m) => useGLTF.preload(m));
 
 // Slot layout across the desk: a shallow arc facing the viewer.
@@ -161,12 +169,13 @@ function Rig({ active, focus }: { active: SectionId | null; focus: boolean }) {
     camera.position.y = MathUtils.damp(camera.position.y, (flat ? 1.5 : CAM.pos[1]) + (editor?.editing ? 0 : pointer.y * 0.12), 2.5, dt);
     camera.position.z = MathUtils.damp(camera.position.z, flat ? 4.6 : CAM.pos[2], 2.5, dt);
     camera.lookAt(flat ? -0.6 : CAM.at[0], CAM.at[1], CAM.at[2]);
-  });
+  }, -1); // before the monitor projects its DOM face with this camera (negative: doesn't take over rendering)
   return null;
 }
 
-export default function Scene({ p, active, onSelectAction, motion, panel3d }: {
+export default function Scene({ p, active, onSelectAction, motion, panel3d, faceRef }: {
   p: Palette; active: SectionId | null; onSelectAction: (id: SectionId | null) => void; motion: number; panel3d?: boolean;
+  faceRef: RefObject<HTMLDivElement | null>;
 }) {
   // Low-end GPUs: when the frame rate stays below the monitor's bounds, drop to 1x resolution and skip Bloom.
   // ponytail: one-way (no recovery) so it cannot flip-flop; upgrade to onIncline if recovery is wanted.
@@ -188,8 +197,8 @@ export default function Scene({ p, active, onSelectAction, motion, panel3d }: {
       {sections.map((_, i) => (
         <Slot key={i} i={i} p={p} active={active} onSelect={onSelectAction} motion={motion} focus={focus} />
       ))}
-      <Sparkles count={70} scale={[12, 3, 6]} position={[0, 1.2, -0.5]} size={2} speed={motion * 0.25} color={p.accent} />
-      {panel3d && <Monitor p={p} active={active} onCloseAction={() => onSelectAction(null)} />}
+      <Sparkles ref={clampSparkles} count={70} scale={[12, 3, 6]} position={[0, 1.2, -0.5]} size={2} speed={motion * 0.25} color={p.accent} />
+      {panel3d && <Monitor p={p} active={active} faceRef={faceRef} />}
       <Rig active={active} focus={focus} />
       {!low && (
         <EffectComposer>
