@@ -7,7 +7,7 @@
 // screen quad with one 2D homography. No CSS 3D context (preserve-3d / perspective), which Safari composites unreliably.
 import { useFrame, useThree } from "@react-three/fiber";
 import { useMemo, useRef, useState, type CSSProperties, type ReactNode, type Ref, type RefObject } from "react";
-import { MathUtils, Quaternion, Vector3, type Group, type Mesh } from "three";
+import { Euler, Matrix4, MathUtils, Quaternion, Vector3, type Group, type Mesh } from "three";
 import { quadToCss } from "@/lib/quad";
 import { PANEL } from "@/data/doc";
 import type { Palette } from "@/data/themes";
@@ -16,7 +16,7 @@ import PanelShell from "./PanelShell";
 import { ProfileBody } from "./Hud";
 import { SectionBody } from "./Sections";
 import { Editable3D, useLayout } from "./LayoutEditor";
-import { identity, type Transform } from "@/data/layout";
+import { CAM, identity, type Transform } from "@/data/layout";
 
 const WORLD_W = 1.8; // a PANEL.w-wide panel is this wide in world units
 const K = WORLD_W / PANEL.w; // world units per CSS px (shared by every panel so text sizes match)
@@ -26,51 +26,56 @@ const UP = new Vector3(0, 1, 0);
 const CORNERS = [[-1, 1], [1, 1], [1, -1], [-1, -1]] as const; // top-left, top-right, bottom-right, bottom-left
 const v = new Vector3();
 
-// The camera never leaves this pose (Rig adds only mouse parallax); the open monitor and the pad row are placed relative to it.
-export const CAM = { pos: [0, 1.8, 5.2], at: [0, 1, 0] } as const;
+// The section monitor follows its saved camera, including its horizontal viewing angle.
 const TAN = Math.tan(MathUtils.degToRad(48 / 2)); // half the camera's vertical fov (Scene.tsx)
-const HOME = { lean: -0.06, yaw: -1.1, z: -1.8 };
-const homeScale = (aspect: number) => Math.min(1.04, aspect * 0.72); // narrow (tablet-portrait) viewports: shrink so it stays on screen
-const homePos = (aspect: number): [number, number, number] => [2.3 * aspect, (PANEL.h * K * homeScale(aspect)) / 2 * Math.cos(HOME.lean) + 0.25, HOME.z];
+const HOME = { lean: -0.4, yaw: -0.4, z: -0.8 };
+const homeScale = (aspect: number) => Math.min(1.15, aspect * 0.85); // narrow (tablet-portrait) viewports: shrink so it stays on screen
+const homePos = (aspect: number): [number, number, number] => [Math.min(3.5, 2.3 * aspect), (PANEL.h * K * homeScale(aspect)) / 2 * Math.cos(HOME.lean) + 0.25, HOME.z];
 
 /** Open state: the monitor right in front of the camera on its right, the five pads in a row on the bench to its left. */
-function layoutPose(aspect: number, width: number, height: number) {
-  const cam = new Vector3(...CAM.pos);
-  const f = new Vector3(...CAM.at).sub(cam).normalize(); // camera forward
-  const u = new Vector3(0, 1, 0).addScaledVector(f, -f.y).normalize(); // camera up
+function layoutPose(aspect: number, width: number, height: number, position: readonly number[]) {
+  const cam = new Vector3().fromArray(position);
+  const target = new Vector3(...CAM.at);
+  const f = target.clone().sub(cam).normalize();
+  const rightAxis = f.clone().cross(UP).normalize();
+  const u = rightAxis.clone().cross(f).normalize();
+  const rotation = new Euler().setFromRotationMatrix(new Matrix4().lookAt(cam, target, UP));
   const W = width * K, H = height * K;
-  const D = Math.min(4.6, Math.max(H / (2 * TAN * 0.8), W / 0.5 / (2 * TAN * aspect))); // monitor distance: ~80% of the height, at most half the width
+  const D = Math.max(H / (2 * TAN * 0.88), W / 0.6 / (2 * TAN * aspect)); // reading view: fit within 88% height / 60% width, even for resized monitors
   const ndc = (D0: number) => D0 / (TAN * aspect * D); // world units at the monitor plane -> screen x in [-1, 1]
   const right = 0.94 - ndc(W / 2); // panel centre, screen x
   const left = right - ndc(W / 2); // panel left edge
-  const centre = cam.clone().addScaledVector(f, D).addScaledVector(new Vector3(1, 0, 0), right * TAN * aspect * D);
-  // pads: evenly across the free screen width, at a fixed screen height, dropped onto the bench plane (y = 0)
-  const n = sections.length;
-  const x0 = -0.76, x1 = Math.min(left - 0.2, 0.1);
+  const centre = cam.clone().addScaledVector(f, D).addScaledVector(rightAxis, right * TAN * aspect * D);
+  // Wrap the rail when the reading panel leaves too little room for five distinct labels/targets.
+  const columns = aspect < 1.7 ? 3 : sections.length;
+  const x0 = columns === 3 ? -0.76 : -0.58, x1 = Math.min(left - 0.2, 0.1);
   const pads = sections.map((_, i) => {
-    const nx = x0 + ((x1 - x0) * i) / (n - 1);
-    const ray = f.clone().addScaledVector(new Vector3(1, 0, 0), nx * TAN * aspect).addScaledVector(u, -0.4 * TAN);
+    const nx = x0 + ((x1 - x0) * (i % columns)) / (columns - 1);
+    const ny = -0.24 - Math.floor(i / columns) * 0.26;
+    const ray = f.clone().addScaledVector(rightAxis, nx * TAN * aspect).addScaledVector(u, ny * TAN);
     return cam.clone().addScaledVector(ray, -cam.y / ray.y);
   });
   const pitch = pads[1].distanceTo(pads[0]);
   return {
-    monitor: { pos: [centre.x, centre.y, centre.z] as [number, number, number], lean: Math.atan2(f.y, -f.z) },
+    monitor: { pos: [centre.x, centre.y, centre.z] as [number, number, number], lean: rotation.x, yaw: rotation.y, roll: rotation.z },
     pads: pads.map((v) => [v.x, v.y, v.z] as [number, number, number]),
-    padScale: Math.min(0.7, Math.max(0.2, (pitch * 0.95) / 1.18)), // pad outer ring is ~1.18 wide at scale 1
+    padScale: Math.min(0.7, Math.max(0.2, (pitch * 0.95) / 1.18)), // retain the original 1.18-wide spacing envelope so saved pad offsets do not shift
   };
 }
 /** The pads' default spots follow the default panel size (so resizing the monitor never shifts saved pad offsets); the monitor follows its own size. */
-function focusPose(aspect: number, width: number, height: number) {
-  const base = layoutPose(aspect, PANEL.w, PANEL.h);
-  return { ...base, monitor: layoutPose(aspect, width, height).monitor };
+function focusPose(aspect: number, width: number, height: number, position: readonly number[]) {
+  const base = layoutPose(aspect, PANEL.w, PANEL.h, position);
+  return { ...base, monitor: layoutPose(aspect, width, height, position).monitor };
 }
 export type FocusPose = ReturnType<typeof focusPose>;
 
 export function useFocusPose(): FocusPose {
   const aspect = useThree((s) => s.size.width / s.size.height);
-  const t = useLayout()?.layout["monitor-open"] ?? identity;
+  const layout = useLayout()?.layout;
+  const t = layout?.["monitor-open"] ?? identity;
+  const position = layout?.["camera-section"]?.position ?? CAM.pos;
   const width = PANEL.w * (t.width ?? 1), height = PANEL.h * (t.height ?? 1);
-  return useMemo(() => focusPose(aspect, width, height), [aspect, width, height]);
+  return useMemo(() => focusPose(aspect, width, height, position), [aspect, width, height, position]);
 }
 
 /** One framed hologram panel: translucent slab + glowing bezel, with a PanelShell face.
@@ -111,7 +116,7 @@ function HoloPanel({ p, scale = 1, position, yaw, lean = 0, focus, open, faceRef
     // home faces out by yaw/lean (+ saved yaw); open faces the camera (+ saved yaw)
     const { a, b, c } = q.current;
     a.setFromEuler(g.rotation.set(lean, yaw, 0)).premultiply(c.setFromAxisAngle(UP, tHome.rotation ?? 0));
-    b.setFromEuler(g.rotation.set(focus.lean, 0, 0)).premultiply(c.setFromAxisAngle(UP, tOpen.rotation ?? 0));
+    b.setFromEuler(g.rotation.set(focus.lean, focus.yaw, focus.roll)).premultiply(c.setFromAxisAngle(UP, tOpen.rotation ?? 0));
     g.quaternion.copy(a.slerp(b, f)).premultiply(c.setFromAxisAngle(UP, -cy));
     g.scale.setScalar(L(scale * tHome.scale, tOpen.scale, f) / tCur.scale);
     // size: the DOM box and the bezel follow the blended width/height

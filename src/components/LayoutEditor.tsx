@@ -2,11 +2,11 @@
 
 import { useCallback, createContext, useContext, useEffect, useId, useRef, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from "react";
 import { TransformControls } from "@react-three/drei";
-import type { Group } from "three";
-import { clampScale, editableItems, identity, idForView, isMonitor, viewOf, type Layout, type LayoutId, type Transform } from "@/data/layout";
+import { MathUtils, Spherical, Vector3, type Group } from "three";
+import { CAM, cameraLimits, clampScale, editableItems, identity, idForView, isCamera, isMonitor, viewOf, type Layout, type LayoutId, type Transform } from "@/data/layout";
 
 const Context = createContext<{
-  layout: Layout; editing: boolean; section: boolean; selected: LayoutId; mode: "translate" | "rotate" | "scale";
+  layout: Layout; editing: boolean; cameraEditing: boolean; section: boolean; selected: LayoutId; mode: "translate" | "rotate" | "scale";
   select: (id: LayoutId) => void; update: (id: LayoutId, t: Transform) => void;
 } | null>(null);
 export const useLayout = () => useContext(Context);
@@ -36,13 +36,18 @@ export function LayoutProvider({ children, in3d, section, initial, onTargetActio
   const dirty = JSON.stringify(layout) !== JSON.stringify(saved);
   const enabled = process.env.NODE_ENV === "development" && isLocal;
   const update = (id: LayoutId, t: Transform) => {
-    setLayout((l) => ({ ...l, [id]: { ...t, position: t.position.map((n) => Math.min(20, Math.max(-20, n))) as Transform["position"], scale: clampScale(t.scale) } }));
+    setLayout((l) => {
+      const next = { ...t, position: t.position.map((n) => isCamera(id) ? Number(n.toFixed(6)) : Math.min(20, Math.max(-20, n))) as Transform["position"], scale: clampScale(t.scale) };
+      const previous = l[id] ?? (isCamera(id) ? { position: [...CAM.pos], scale: 1 } : identity);
+      return JSON.stringify(previous) === JSON.stringify(next) ? l : { ...l, [id]: next };
+    });
     setStatus("");
   };
   const select = (id: LayoutId) => { setSelected(id); onTargetAction(id); };
   const t = layout[selected] ?? identity;
   const monitor = isMonitor(selected); // sized by width/height, not uniform scale
   const view = section ? "section" : "home"; // follows what the scene shows (a section is open or not)
+  const cameraEditing = enabled && in3d && editing && isCamera(selected) && viewOf(selected) === view;
 
   useEffect(() => {
     if (!dirty) return;
@@ -74,7 +79,7 @@ export function LayoutProvider({ children, in3d, section, initial, onTargetActio
   }
 
   return (
-    <Context.Provider value={{ layout, editing, section, selected, mode, select, update }}>
+    <Context.Provider value={{ layout, editing, cameraEditing, section, selected, mode, select, update }}>
       {children}
       {enabled && (
         <aside ref={menu} className={`layout-editor${collapsed ? " is-collapsed" : ""}`} aria-label="Development layout editor"
@@ -110,8 +115,8 @@ export function LayoutProvider({ children, in3d, section, initial, onTargetActio
             <fieldset disabled={saving}>
               {in3d && (
                 <div className="layout-editor-actions" role="group" aria-label="Scene view">
-                  <button aria-pressed={view === "home"} onClick={() => select("profile")}>Home view</button>
-                  <button aria-pressed={view === "section"} onClick={() => select("monitor-open")}>Section view</button>
+                  <button aria-pressed={view === "home"} onClick={() => select(isCamera(selected) ? "camera-home" : "profile")}>Home view</button>
+                  <button aria-pressed={view === "section"} onClick={() => select(isCamera(selected) ? "camera-section" : "monitor-open")}>Section view</button>
                 </div>
               )}
               <label>Component
@@ -120,6 +125,7 @@ export function LayoutProvider({ children, in3d, section, initial, onTargetActio
                   {!Object.keys(editableItems).some((id) => id === selected && (in3d ? !id.startsWith("mobile-") && [view, "both"].includes(viewOf(id)) : id.startsWith("mobile-"))) && <option value={selected}>{editableItems[selected]} (other view)</option>}
                 </select>
               </label>
+              {isCamera(selected) ? <CameraFields id={selected} /> : <>
               <div className="layout-editor-actions">
                 <button aria-pressed={mode === "translate"} onClick={() => setMode("translate")}>Move</button>
                 {!selected.startsWith("mobile-") && <button aria-pressed={mode === "rotate"} onClick={() => setMode("rotate")}>Rotate</button>}
@@ -151,14 +157,15 @@ export function LayoutProvider({ children, in3d, section, initial, onTargetActio
               )) : <label>Size · {Math.round(t.scale * 100)}%
                 <input type="range" aria-label="Component size" min={0.25} max={3} step={0.05} value={t.scale} onChange={(e) => update(selected, { ...t, scale: Number(e.target.value) })} />
               </label>}
+              </>}
               <div className="layout-editor-actions">
                 <button onClick={() => {
                   setLayout((l) => { const next = { ...l }; delete next[selected]; return next; }); setStatus("");
-                }}>Reset item</button>
+                }}>{isCamera(selected) ? "Reset view" : "Reset item"}</button>
                 <button disabled={!dirty} onClick={() => { setLayout(saved); setStatus("Changes discarded."); }}>Discard</button>
               </div>
               <button className="layout-editor-save" disabled={!dirty || saving} onClick={save}>{saving ? "Saving…" : "Save to project"}</button>
-              <p>Saved layouts ship with the site. Editing controls do not. Desktop and mobile panels have separate layouts.</p>
+              <p>Saved layouts ship with the site. Editing controls do not. Home and Section cameras are saved independently. Desktop and mobile panels have separate layouts.</p>
             </fieldset>
           )}
           <p role="status">{status || (!editing && dirty ? "Unsaved changes — reopen to save." : "")}</p>
@@ -166,6 +173,31 @@ export function LayoutProvider({ children, in3d, section, initial, onTargetActio
         </aside>
       )}
     </Context.Provider>
+  );
+}
+
+function CameraFields({ id }: { id: LayoutId }) {
+  const editor = useLayout()!;
+  const position = editor.layout[id]?.position ?? CAM.pos;
+  const spherical = new Spherical().setFromVector3(new Vector3().fromArray(position).sub(new Vector3(...CAM.at)));
+  const values = { distance: spherical.radius, elevation: 90 - MathUtils.radToDeg(spherical.phi), azimuth: MathUtils.radToDeg(spherical.theta) };
+  const labels = { distance: "Camera distance", elevation: "View elevation", azimuth: "View angle" };
+  return (
+    <>
+      <p>Drag the room to orbit. Scroll or pinch to zoom. These sliders also work with arrow keys.</p>
+      {(["distance", "elevation", "azimuth"] as const).map((axis) => (
+        <label key={axis}>{labels[axis]} · {values[axis].toFixed(1)}{axis === "distance" ? "" : "°"}
+          <input type="range" aria-label={labels[axis]} min={cameraLimits[axis][0]} max={cameraLimits[axis][1]} step={axis === "distance" ? 0.1 : 1} value={values[axis]} onChange={(e) => {
+            const n = Number(e.target.value);
+            const next = spherical.clone();
+            if (axis === "distance") next.radius = n;
+            else if (axis === "elevation") next.phi = MathUtils.degToRad(90 - n);
+            else next.theta = MathUtils.degToRad(n);
+            editor.update(id, { position: new Vector3().setFromSpherical(next).add(new Vector3(...CAM.at)).toArray(), scale: 1 });
+          }} />
+        </label>
+      ))}
+    </>
   );
 }
 
@@ -181,7 +213,7 @@ export function Editable3D({ id, position = [0, 0, 0], children }: { id: LayoutI
     <>
       <group position={position}>
         <group ref={group} position={t.position} rotation-y={t.rotation ?? 0} scale={t.scale}
-          onClick={(e) => { if (editor?.editing) { e.stopPropagation(); editor.select(viewId); } }}>
+          onClick={(e) => { if (editor?.editing && !editor.cameraEditing) { e.stopPropagation(); editor.select(viewId); } }}>
           {children}
         </group>
       </group>

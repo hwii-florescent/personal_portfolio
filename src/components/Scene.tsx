@@ -1,18 +1,18 @@
 "use client";
 
-import { Canvas, useFrame, type ThreeEvent } from "@react-three/fiber";
-import { PerformanceMonitor, Sparkles, Text, useGLTF } from "@react-three/drei";
+import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
+import { OrbitControls, PerformanceMonitor, Sparkles, Text, useGLTF } from "@react-three/drei";
 import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import { MathUtils, AdditiveBlending, Color, DoubleSide, Vector3, type Group, type Mesh, type Points, type ShaderMaterial } from "three";
 import { timer, TimerTick } from "@/lib/timer";
-import { Suspense, useRef, useState, type RefObject } from "react";
+import { Suspense, useEffect, useRef, useState, type RefObject } from "react";
 import { sections, type SectionId } from "@/data/sections";
 import type { Palette } from "@/data/themes";
 import Hologram from "./Hologram";
-import Monitor, { CAM, useFocusPose } from "./HtmlPanel";
+import Monitor, { useFocusPose } from "./HtmlPanel";
 import Workshop, { RealProp } from "./Workshop";
 import { Editable3D, useLayout } from "./LayoutEditor";
-import { identity } from "@/data/layout";
+import { CAM, cameraLimits, identity } from "@/data/layout";
 
 
 const FONT = "/fonts/Orbitron.ttf";
@@ -49,10 +49,6 @@ function Emitter({ p, lit }: { p: Palette; lit: boolean }) {
         <ringGeometry args={[0.62, 0.68, 64]} />
         <meshBasicMaterial color={p.accent} toneMapped={false} />
       </mesh>
-      <mesh rotation-x={-Math.PI / 2} position-y={0.012}>
-        <ringGeometry args={[0.82, 0.84, 64]} />
-        <meshBasicMaterial color={p.primary} toneMapped={false} />
-      </mesh>
       <mesh rotation-x={-Math.PI / 2} position-y={0.008}>
         <circleGeometry args={[0.62, 48]} />
         <meshBasicMaterial color={p.accent} transparent opacity={lit ? 0.22 : 0.1} blending={AdditiveBlending} depthWrite={false} />
@@ -79,8 +75,9 @@ function Slot({ i, p, active, onSelect, motion, focus }: {
   const g = useRef<Group>(null);
   const holo = useRef<Group>(null);
   const hit = useRef<Mesh>(null);
-  const label = useRef<Mesh>(null);
+  const label = useRef<Group>(null);
   const [worldScale] = useState(() => new Vector3());
+  const [labelDirection] = useState(() => new Vector3());
   const f = useRef(0); // 0 = home spot, 1 = in the row beside the open monitor
   const [hover, setHover] = useState(false);
   const editor = useLayout();
@@ -95,12 +92,12 @@ function Slot({ i, p, active, onSelect, motion, focus }: {
   const tCur = rail ? tOpen : tHome; // the wrapper (Editable3D) currently in use
   const base = rail ? pose.pads[i] : home;
   const ev = {
-    onClick: (e: ThreeEvent<MouseEvent>) => { e.stopPropagation(); if (editing) editor.select(id); else onSelect(selected ? null : s.id); },
-    onPointerOver: () => { setHover(true); document.body.style.cursor = "pointer"; },
+    onClick: (e: ThreeEvent<MouseEvent>) => { e.stopPropagation(); if (editing) { if (!editor.cameraEditing) editor.select(id); } else onSelect(selected ? null : s.id); },
+    onPointerOver: (e: ThreeEvent<PointerEvent>) => { e.stopPropagation(); setHover(true); document.body.style.cursor = "pointer"; },
     onPointerOut: () => { setHover(false); document.body.style.cursor = ""; },
   };
 
-  useFrame((_, dt) => {
+  useFrame(({ camera }, dt) => {
     const grp = g.current;
     const h = holo.current;
     if (!grp || !h) return;
@@ -120,14 +117,21 @@ function Slot({ i, p, active, onSelect, motion, focus }: {
     h.scale.setScalar(MathUtils.damp(h.scale.x, sc, 6, dt));
     const bob = motion && !editing ? Math.sin(timer.getElapsed() * 1.2 + i) * 0.04 : 0;
     h.position.y = MathUtils.damp(h.position.y, 0.2 + bob, 6, dt);
-    // pads sit close together in the row: narrow the hit cylinders so neighbours don't overlap
+    // Keep the central body target tight; visible geometry and labels handle the rest.
     hit.current?.scale.set(L(1, 0.6, k), 1, L(1, 0.6, k));
     // Follow the live world position (including gizmo drags), not the pad's yaw or text scale.
     if (label.current) {
       grp.getWorldPosition(label.current.position);
       grp.getWorldScale(worldScale);
       label.current.position.y += 0.02;
-      label.current.position.z += 0.85 * worldScale.x;
+      if (rail) {
+        label.current.quaternion.copy(camera.quaternion);
+        labelDirection.set(0, 0, 1).applyQuaternion(camera.quaternion).setY(0).normalize();
+        label.current.position.addScaledVector(labelDirection, 0.85 * worldScale.x);
+      } else {
+        label.current.quaternion.identity();
+        label.current.position.z += 0.85 * worldScale.x;
+      }
     }
   });
 
@@ -136,41 +140,66 @@ function Slot({ i, p, active, onSelect, motion, focus }: {
     <Editable3D id={id} position={base}>
     <group ref={g}>
       <Emitter p={p} lit={selected || hover} />
-      <group ref={holo} position-y={0.2}>
+      <group ref={holo} position-y={0.2} {...ev}>
         <Suspense fallback={null}>
           <Hologram url={s.model} p={p} opacity={rail && !selected && !hover ? 0.55 : 1} boost={hover || selected ? 0.35 : 0} motion={editing ? 0 : motion} />
         </Suspense>
       </group>
-      {/* generous invisible hit target so the click doesn't depend on thin geometry */}
-      <mesh ref={hit} position-y={0.8} visible={false} {...ev}>
-        <cylinderGeometry args={[0.8, 0.8, 1.8, 12]} />
+      {/* Solid target inside the emitter rim: no oversized invisible volume over neighbouring sections. */}
+      <mesh ref={hit} name={`target-${s.id}`} position-y={0.6} visible={false} {...ev}>
+        <cylinderGeometry args={[0.4, 0.4, 0.65, 16]} />
       </mesh>
     </group>
     </Editable3D>
-    {/* World-space sibling: fixed-size engraving at the front, never hidden by a resized object. */}
-    <Text
-      ref={label} font={FONT} fontSize={0.1} letterSpacing={0.25} rotation-x={-1.15}
-      renderOrder={10} material-depthTest={false} material-depthWrite={false}
-      color={selected || hover ? p.gold : p.accent} anchorY="middle" {...ev}
-    >
-      {s.label.toUpperCase()}
-    </Text>
+    {/* World-space sibling: desk engraving at home, camera-facing labels in section view. */}
+    <group ref={label} name={`label-${s.id}`}>
+      <Text
+        font={FONT} fontSize={0.1} letterSpacing={0.25} rotation-x={rail ? 0 : -1.15}
+        renderOrder={10} material-depthTest={false} material-depthWrite={false}
+        color={selected || hover ? p.gold : p.accent} anchorY="middle" {...ev}
+      >
+        {s.label.toUpperCase()}
+      </Text>
+    </group>
     </>
   );
 }
 
 function Rig({ active, focus }: { active: SectionId | null; focus: boolean }) {
   const editor = useLayout();
-  useFrame(({ camera, pointer }, dt) => {
-    // slight mouse parallax so it feels like you're leaning over the table. The camera stays put when a section opens (md+):
-    // the monitor comes to it. Below md the old nudge toward the flat panel remains.
+  const camera = useThree((s) => s.camera);
+  const id = active ? "camera-section" : "camera-home";
+  const position = editor?.layout[id]?.position ?? CAM.pos;
+  const cameraEditing = !!editor?.cameraEditing;
+  const interacting = useRef(false);
+  useEffect(() => { interacting.current = false; }, [id, cameraEditing]);
+  useEffect(() => {
+    if (!cameraEditing) return;
+    camera.position.fromArray(position);
+    camera.lookAt(...CAM.at);
+  }, [camera, position, cameraEditing]);
+
+  useFrame(({ camera, pointer, size }, dt) => {
+    if (cameraEditing) return; // OrbitControls owns the camera while adjusting a view.
     const flat = active && !focus;
-    camera.position.x = MathUtils.damp(camera.position.x, editor?.editing ? 0 : pointer.x * 0.35, 2.5, dt);
-    camera.position.y = MathUtils.damp(camera.position.y, (flat ? 1.5 : CAM.pos[1]) + (editor?.editing ? 0 : pointer.y * 0.12), 2.5, dt);
-    camera.position.z = MathUtils.damp(camera.position.z, flat ? 4.6 : CAM.pos[2], 2.5, dt);
+    const zoom = size.width < 768 ? Math.max(1, 1.4 * size.height / size.width) : 1;
+    const parallax = editor?.editing ? 0 : 1;
+    camera.position.x = MathUtils.damp(camera.position.x, position[0] * zoom + pointer.x * 0.35 * parallax, 2.5, dt);
+    camera.position.y = MathUtils.damp(camera.position.y, CAM.at[1] + (position[1] - CAM.at[1]) * zoom - (flat ? 0.3 : 0) + pointer.y * 0.12 * parallax, 2.5, dt);
+    camera.position.z = MathUtils.damp(camera.position.z, position[2] * zoom - (flat ? 0.4 : 0), 2.5, dt);
     camera.lookAt(flat ? -0.6 : CAM.at[0], CAM.at[1], CAM.at[2]);
-  }, -1); // before the monitor projects its DOM face with this camera (negative: doesn't take over rendering)
-  return null;
+  }, -2); // before the controls and the monitor's DOM projection
+
+  return cameraEditing && editor ? (
+    <OrbitControls key={id} target={[...CAM.at]} enablePan={false} enableDamping={false}
+      minDistance={cameraLimits.distance[0]} maxDistance={cameraLimits.distance[1]}
+      minPolarAngle={MathUtils.degToRad(90 - cameraLimits.elevation[1])}
+      maxPolarAngle={MathUtils.degToRad(90 - cameraLimits.elevation[0])}
+      minAzimuthAngle={MathUtils.degToRad(cameraLimits.azimuth[0])}
+      maxAzimuthAngle={MathUtils.degToRad(cameraLimits.azimuth[1])}
+      onStart={() => { interacting.current = true; }} onEnd={() => { interacting.current = false; }}
+      onChange={() => { if (interacting.current) editor.update(id, { position: camera.position.toArray(), scale: 1 }); }} />
+  ) : null;
 }
 
 export default function Scene({ p, active, onSelectAction, motion, panel3d, faceRef }: {
@@ -182,17 +211,17 @@ export default function Scene({ p, active, onSelectAction, motion, panel3d, face
   const [low, setLow] = useState(false);
   const focus = !!panel3d && active !== null; // md+: camera pushes in on the monitor and the section objects line up beside it
   return (
-    <Canvas camera={{ position: [0, 1.8, 5.2], fov: 48 }} dpr={low ? 1 : [1, 2]} gl={{ antialias: true }} aria-hidden="true">
+    <Canvas shadows="percentage" camera={{ position: [...CAM.pos], fov: 48 }} dpr={low ? 1 : [1, 2]} gl={{ antialias: true }} aria-hidden="true">
       <PerformanceMonitor onDecline={() => setLow(true)} />
       <TimerTick />
       <color attach="background" args={[p.bg]} />
-      <fog attach="fog" args={[p.bg, 9, 21]} />
+      <fog attach="fog" args={[p.bg, 38, 65]} />
       <ambientLight intensity={0.25} />
       <pointLight position={[0, 3, 1]} intensity={8} color={p.accent} />
-      <Workshop p={p} />
+      <Workshop p={p} desktop={!!panel3d} />
       <Suspense fallback={null}>
-        <Editable3D id="mug" position={[-2.5, 0, 1.1]}><RealProp url="/models/mug.glb" at={[0, 0, 0]} size={0.42} rotY={0.6} /></Editable3D>
-        <Editable3D id="pens" position={[2.6, 0, 1.1]}><RealProp url="/models/pens.glb" at={[0, 0, 0]} size={0.65} rotY={-0.4} /></Editable3D>
+        <Editable3D id="mug" position={[-4.25, 0, 2.35]}><RealProp url="/models/mug.glb" at={[0, 0, 0]} size={0.42} rotY={0.6} /></Editable3D>
+        <Editable3D id="pens" position={[3.6, 0, 2.35]}><RealProp url="/models/pens.glb" at={[0, 0, 0]} size={0.65} rotY={-0.4} /></Editable3D>
       </Suspense>
       {sections.map((_, i) => (
         <Slot key={i} i={i} p={p} active={active} onSelect={onSelectAction} motion={motion} focus={focus} />

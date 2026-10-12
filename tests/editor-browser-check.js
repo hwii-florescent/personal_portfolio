@@ -2,7 +2,7 @@
 // Exercises the real editor without saving or modifying src/data/layout.json.
 (async () => {
   const assert = (ok, message) => { if (!ok) throw new Error(message); };
-  const settle = () => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+  const settle = () => new Promise(resolve => setTimeout(resolve, 50));
   const menu = document.querySelector('.layout-editor');
   assert(menu && innerWidth >= 768, 'Open the local desktop site first');
   const button = text => [...menu.querySelectorAll('button')].find(b => b.textContent === text);
@@ -58,10 +58,37 @@
       await select(`section-${id}`);
       assert(Number(xInput().value) === Number((sectionX + 0.25).toFixed(3)), `${id}: home edits must not change section`);
     }
+    const cameraValue = label => Number(menu.querySelector(`input[aria-label="${label}"]`).value);
+    const setCamera = async (label, value) => {
+      const input = menu.querySelector(`input[aria-label="${label}"]`);
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value').set.call(input, String(value));
+      input.dispatchEvent(new Event('input', { bubbles: true }));
+      await settle();
+    };
+    button('Home view').click(); await settle(); await select('camera-home');
+    const homeDefaultAngle = cameraValue('View angle');
+    await setCamera('View angle', 25); await setCamera('Camera distance', 9);
+    button('Section view').click(); await settle();
+    assert(menu.querySelector('select').value === 'camera-section', 'Camera selection must follow the view');
+    assert(cameraValue('View angle') === homeDefaultAngle, 'Section camera must not inherit Home edits');
+    await setCamera('View angle', -15); await setCamera('Camera distance', 12);
+    button('Home view').click(); await settle();
+    assert(cameraValue('View angle') === 25 && cameraValue('Camera distance') === 9, 'Home camera must retain its own zoom and angle');
+    button('Section view').click(); await settle();
+    assert(cameraValue('View angle') === -15 && cameraValue('Camera distance') === 12, 'Section camera must retain its own zoom and angle');
+    const canvas = document.querySelector('canvas');
+    const beforeZoom = cameraValue('Camera distance');
+    canvas.dispatchEvent(new WheelEvent('wheel', { deltaY: -100, clientX: innerWidth / 2, clientY: innerHeight / 2, bubbles: true, cancelable: true }));
+    await settle();
+    assert(cameraValue('Camera distance') < beforeZoom, 'Scrolling must zoom the actual camera');
+    button('Reset view').click(); await settle();
+    assert(cameraValue('View angle') === homeDefaultAngle, 'Reset view must restore the Section default');
+    button('Home view').click(); await settle();
+    assert(cameraValue('View angle') === 25, 'Resetting Section must preserve Home');
   } finally {
     button('Discard').click(); await settle();
     button('Home view').click(); await settle();
     button('Done editing').click(); await settle();
   }
-  return 'PASS: menu movement, collapse/expand, viewport bounds, and six independent prop layouts';
+  return 'PASS: editor movement, six independent prop layouts, independent Home/Section cameras, wheel zoom, reset and discard';
 })();

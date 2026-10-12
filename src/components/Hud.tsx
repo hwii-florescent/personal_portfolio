@@ -47,7 +47,7 @@ export function ProfileBody({ full }: { full?: boolean }) {
     <>
       <h3 className={`font-hud font-black uppercase leading-none text-fg ${full ? "text-3xl" : "text-3xl sm:text-4xl"}`}>{p.name}</h3>
       <p className="mt-2 h-5 font-mono text-sm text-accent"><Typed key={role} text={role} speed={35} /></p>
-      <p className={`mt-4 text-sm text-muted ${full ? "" : "line-clamp-3"}`}>{p.bio}</p>
+      <p className={`mt-4 text-muted ${full ? "text-lg leading-relaxed" : "text-sm line-clamp-3"}`}>{p.bio}</p>
       <p className="mt-4 font-mono text-[11px] text-muted">
         {p.education.school} · {p.education.degree} · {p.education.grad}
       </p>

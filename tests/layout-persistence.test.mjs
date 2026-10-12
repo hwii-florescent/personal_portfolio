@@ -64,6 +64,8 @@ try {
     profile: { ...original.profile, rotation: Math.PI / 3, width: 1.35, height: 0.9 },
     'section-mug': { position: [-1, 0.1, 2], scale: 1.5, rotation: Math.PI / 2 },
     'section-keyboard': { position: [2, 0, -1], scale: 0.8, rotation: -Math.PI / 3 },
+    'camera-home': { position: [2, 4.8, 10.8], scale: 1 },
+    'camera-section': { position: [-3, 4.5, 8], scale: 1 },
   };
   const response = await fetch(url + '/api/dev-layout', { method: 'POST', headers: { 'content-type': 'application/json', origin: url }, body: JSON.stringify(changed) });
   assert.equal(response.status, 200, await response.text());

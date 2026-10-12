@@ -10,7 +10,7 @@ export type V3 = [number, number, number];
 
 export function Box({ at, size, color, rough = 0.8, metal = 0, rot, emissive }: { at: V3; size: V3; color: string; rough?: number; metal?: number; rot?: V3; emissive?: string }) {
   return (
-    <mesh position={at} rotation={rot}>
+    <mesh position={at} rotation={rot} castShadow receiveShadow>
       <boxGeometry args={size} />
       <meshStandardMaterial color={color} roughness={rough} metalness={metal} emissive={emissive} emissiveIntensity={emissive ? 0.6 : 0} />
     </mesh>

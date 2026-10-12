@@ -1,17 +1,16 @@
 "use client";
 
-// The room around the holograms: an engineer's steel workbench in front (keyboard, mouse, headset), a wall behind
-// (pegboard tools, character collectibles, neon sign, picture frame, hanging lamp). Procedural geometry and painted textures.
-import { useMemo } from "react";
-import { Environment, Lightformer, Text, useGLTF } from "@react-three/drei";
+// An animated cabin workshop: walnut furniture, daylight on the left, collectibles on the right.
+import { useEffect, useMemo } from "react";
+import { Environment, Lightformer, RoundedBox, useGLTF, useTexture } from "@react-three/drei";
 import { Box3, CanvasTexture, RepeatWrapping, SRGBColorSpace, Vector3 } from "three";
+import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import type { Palette } from "@/data/themes";
 import { Editable3D } from "./LayoutEditor";
 import {
   Box, CableCoil, Cyl, Duck, Figure, Gpu, Handheld, Headset, Keyboard, Mouse, Multimeter, ScrewdriverSet, SolderingIron, type V3,
 } from "./props";
 
-// Deterministic pseudo-random so the layout is stable across renders/reloads.
 const rng = (seed: number) => () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 4294967296);
 
 function canvasTex(w: number, h: number, draw: (g: CanvasRenderingContext2D) => void, repeat?: [number, number]) {
@@ -25,178 +24,219 @@ function canvasTex(w: number, h: number, draw: (g: CanvasRenderingContext2D) => 
   return t;
 }
 
-// Brushed stainless: fine streaks along x, a few sheet seams. Metalness/anisotropy do the rest (needs the Environment in Scene).
-const steelTex = () => canvasTex(1024, 512, (g) => {
+// Broad, gently wandering grain rather than photorealistic noise: varnished animation-cel walnut.
+const woodTex = () => canvasTex(1024, 512, (g) => {
   const r = rng(7);
-  g.fillStyle = "#6b7782"; g.fillRect(0, 0, 1024, 512);
-  for (let i = 0; i < 1800; i++) {
-    g.fillStyle = r() > 0.5 ? `rgba(255,255,255,${r() * 0.09})` : `rgba(40,50,60,${r() * 0.09})`;
-    g.fillRect(r() * 1024, r() * 512, 40 + r() * 400, 1 + r());
+  g.fillStyle = "#70452b"; g.fillRect(0, 0, 1024, 512);
+  for (let plank = 0; plank < 8; plank++) {
+    g.fillStyle = ["#795035", "#674029", "#865738", "#70472f"][plank % 4];
+    g.fillRect(0, plank * 64, 1024, 64);
+    for (let i = 0; i < 18; i++) {
+      const y = plank * 64 + r() * 64;
+      const bend = 2 + r() * 8;
+      g.strokeStyle = r() > 0.45 ? "rgba(37,19,12,0.16)" : "rgba(217,162,104,0.13)";
+      g.lineWidth = 0.5 + r() * 2;
+      g.beginPath(); g.moveTo(0, y);
+      g.bezierCurveTo(300, y + bend, 700, y - bend, 1024, y); g.stroke();
+    }
+    g.fillStyle = "rgba(37,19,12,0.3)"; g.fillRect(0, plank * 64, 1024, 1);
   }
-  g.fillStyle = "rgba(25,30,36,0.7)"; g.fillRect(0, 0, 1024, 3); g.fillRect(0, 0, 3, 512); // seams (tile edges)
-}, [3, 1]);
-
-const matTex = (accent: string) => canvasTex(1024, 512, (g) => {
-  g.fillStyle = "#0a161d"; g.fillRect(0, 0, 1024, 512);
-  for (let x = 0; x <= 1024; x += 32) { g.fillStyle = x % 160 === 0 ? `${accent}55` : `${accent}1f`; g.fillRect(x, 0, x % 160 === 0 ? 2 : 1, 512); }
-  for (let y = 0; y <= 512; y += 32) { g.fillStyle = y % 160 === 0 ? `${accent}55` : `${accent}1f`; g.fillRect(0, y, 1024, y % 160 === 0 ? 2 : 1); }
-  g.strokeStyle = `${accent}66`; g.lineWidth = 6; g.strokeRect(3, 3, 1018, 506);
 });
 
-const pegTex = () => canvasTex(256, 256, (g) => {
-  g.fillStyle = "#4a4236"; g.fillRect(0, 0, 256, 256);
-  g.fillStyle = "#171410";
-  for (let x = 8; x < 256; x += 16) for (let y = 8; y < 256; y += 16) { g.beginPath(); g.arc(x, y, 2.2, 0, 7); g.fill(); }
-}, [7.4, 7]);
-
-// Placeholder for the wall picture until a real image exists. ponytail: swap for useTexture("/images/….jpg") when there is one.
-const placeholderTex = () => canvasTex(300, 400, (g) => {
-  const gr = g.createLinearGradient(0, 0, 0, 400);
-  gr.addColorStop(0, "#9fb4c4"); gr.addColorStop(1, "#5d6f7d");
-  g.fillStyle = gr; g.fillRect(0, 0, 300, 400);
-  g.fillStyle = "rgba(255,255,255,0.55)"; g.beginPath(); g.arc(215, 120, 28, 0, 7); g.fill(); // sun
-  g.fillStyle = "rgba(40,55,68,0.75)"; g.beginPath(); g.moveTo(0, 330); g.lineTo(100, 200); g.lineTo(170, 290); g.lineTo(220, 230); g.lineTo(300, 330); g.lineTo(300, 400); g.lineTo(0, 400); g.fill();
-  g.fillStyle = "rgba(255,255,255,0.7)"; g.font = "600 20px monospace"; g.textAlign = "center"; g.fillText("PHOTO COMING SOON", 150, 372);
+const projectionTex = (accent: string) => canvasTex(512, 512, (g) => {
+  g.fillStyle = "#617f85"; g.fillRect(0, 0, 512, 512);
+  g.strokeStyle = `${accent}12`; g.lineWidth = 1;
+  for (let n = 16; n < 512; n += 24) {
+    g.beginPath(); g.moveTo(n, 0); g.lineTo(n, 512); g.moveTo(0, n); g.lineTo(512, n); g.stroke();
+  }
+  g.strokeStyle = `${accent}88`; g.lineWidth = 2;
+  for (const x of [18, 494]) for (const y of [18, 494]) {
+    const sx = x === 18 ? 1 : -1, sy = y === 18 ? 1 : -1;
+    g.beginPath(); g.moveTo(x + sx * 28, y); g.lineTo(x, y); g.lineTo(x, y + sy * 28); g.stroke();
+  }
+  g.fillStyle = `${accent}88`; g.font = "10px monospace";
+  g.fillText("HWIII / HOLOGRAPHIC WORKSPACE", 24, 482);
 });
 
 function Bench({ p }: { p: Palette }) {
-  const steel = useMemo(() => steelTex(), []);
-  const mat = useMemo(() => matTex(p.accent), [p.accent]);
+  const wood = useMemo(() => woodTex(), []);
+  const projection = useMemo(() => projectionTex(p.accent), [p.accent]);
+  useEffect(() => () => wood.dispose(), [wood]);
+  useEffect(() => () => projection.dispose(), [projection]);
   return (
-    <>
-      <mesh position={[0, -0.07, 0.5]}>
-        <boxGeometry args={[18, 0.14, 8]} />
-        <meshPhysicalMaterial map={steel} metalness={1} roughness={0.48} anisotropy={0.7} />
+    <group name="walnut-worktable">
+      <RoundedBox name="tabletop" args={[9.4, 0.24, 6.8]} radius={0.06} smoothness={3} position={[0, -0.12, 0]} castShadow receiveShadow>
+        <meshStandardMaterial map={wood} roughness={0.48} metalness={0} />
+      </RoundedBox>
+      {/* A genuinely square inset; the lip, fasteners and glow belong to the projector, not the wood. */}
+      <Box at={[0, 0.003, 0]} size={[5.4, 0.018, 5.4]} color="#242f32" metal={0.7} rough={0.35} />
+      <mesh name="square-projection-insert" position={[0, 0.014, 0]} rotation-x={-Math.PI / 2} receiveShadow>
+        <planeGeometry args={[5.2, 5.2]} />
+        <meshStandardMaterial map={projection} emissiveMap={projection} emissive={p.accent} emissiveIntensity={0.32} roughness={0.32} metalness={0.35} />
       </mesh>
-      {/* cutting mat under the holograms */}
-      <mesh position={[0, 0.004, -0.1]} rotation-x={-Math.PI / 2}>
-        <planeGeometry args={[7, 3.2]} />
-        <meshStandardMaterial map={mat} roughness={0.85} />
-      </mesh>
-    </>
-  );
-}
-
-function Wall({ p }: { p: Palette }) {
-  const peg = useMemo(() => pegTex(), []);
-  return (
-    <>
-      <mesh position={[0, 3, -3.6]}>
-        <planeGeometry args={[30, 9]} />
-        <meshStandardMaterial color="#14181f" roughness={0.95} />
-      </mesh>
-
-      {/* left: pegboard of bench tools, two shelves of collectibles under it */}
-      <mesh position={[-4.9, 3.15, -3.58]}>
-        <planeGeometry args={[2.8, 1.5]} />
-        <meshStandardMaterial map={peg} roughness={0.9} />
-      </mesh>
-      <group position={[-4.9, 3.15, -3.5]}>
-        <Multimeter at={[-0.95, 0.05, 0]} />
-        <SolderingIron at={[-0.45, 0.15, 0]} />
-        <ScrewdriverSet at={[0.3, 0.3, 0]} />
-        <CableCoil at={[1.0, 0.2, 0]} />
-        <Box at={[0.3, -0.3, 0]} size={[0.5, 0.16, 0.03]} color="#a8adb3" metal={0.7} rough={0.4} />
-      </group>
-      {[1.75, 0.95].map((y) => <Box key={y} at={[-4.85, y, -3.4]} size={[2.9, 0.05, 0.3]} color="#4a3320" rough={0.55} />)}
-      <Figure at={[-6.0, 1.775, -3.4]} character="miles" h={0.62} rotY={0.22} />
-      <Figure at={[-5.45, 1.775, -3.4]} character="luffy" rotY={0.12} />
-      <Figure at={[-4.9, 1.775, -3.4]} character="zoro" />
-      <Handheld at={[-4.25, 1.775, -3.4]} rotY={-0.2} />
-      <Figure at={[-3.75, 1.775, -3.4]} character="chopper" h={0.52} rotY={-0.18} />
-      <Figure at={[-5.9, 0.975, -3.4]} character="chopper" h={0.52} rotY={0.15} />
-      <Figure at={[-5.25, 0.975, -3.4]} character="miles" rotY={0.2} />
-      <Box at={[-4.5, 1.1, -3.4]} size={[0.5, 0.2, 0.28]} color="#4d3b4f" />
-      <Box at={[-4.45, 1.28, -3.4]} size={[0.44, 0.16, 0.26]} color="#38503f" />
-      <Duck at={[-3.7, 0.975, -3.4]} rotY={0.3} />
-
-      {/* centre: neon sign */}
-      <Text font="/fonts/Orbitron.ttf" position={[-0.2, 3.2, -3.5]} fontSize={0.42} letterSpacing={0.08} color={p.accent} material-toneMapped={false} anchorY="middle">
-        {"{ SHIP IT }"}
-      </Text>
-      <Text font="/fonts/Orbitron.ttf" position={[-0.2, 2.75, -3.5]} fontSize={0.12} letterSpacing={0.12} color={p.gold} material-toneMapped={false} anchorY="middle">
-        while (alive) learn();
-      </Text>
-
-      {/* right: shelving unit with figures, a GPU, books, a console */}
-      {[2.55, 6.5].map((x) => <Box key={x} at={[x, 2, -3.35]} size={[0.08, 4, 0.45]} color="#2a2f36" metal={0.6} />)}
-      {[0.9, 1.9, 2.9].map((y) => <Box key={y} at={[4.52, y - 0.02, -3.35]} size={[4.05, 0.06, 0.5]} color="#4a3320" rough={0.55} />)}
-      <Figure at={[3.0, 2.91, -3.3]} character="miles" h={0.62} rotY={-0.15} />
-      <Figure at={[3.6, 2.91, -3.3]} character="luffy" rotY={-0.12} />
-      <Figure at={[4.2, 2.91, -3.3]} character="chopper" h={0.52} />
-      <Figure at={[4.8, 2.91, -3.3]} character="zoro" rotY={-0.18} />
-      <mesh position={[5.6, 3.1, -3.3]}>
-        <icosahedronGeometry args={[0.2, 0]} />
-        <meshStandardMaterial color="#9aa3ad" metalness={0.8} roughness={0.3} />
-      </mesh>
-      <Handheld at={[3.0, 1.91, -3.3]} rotY={0.2} />
-      <Gpu p={p} at={[3.95, 1.91, -3.3]} />
-      {["#7a3a30", "#38503f", "#2d4fb0"].map((c, i) => (
-        <Box key={i} at={[4.85 + i * 0.09, 1.93 + (i % 2) * 0.01 + 0.17, -3.3]} size={[0.06, 0.34, 0.24]} color={c} rough={0.9} />
+      {[-2.63, 2.63].map((n) => (
+        <group key={n}>
+          <mesh position={[n, 0.018, 0]}><boxGeometry args={[0.015, 0.008, 5.26]} /><meshBasicMaterial color={p.accent} toneMapped={false} /></mesh>
+          <mesh position={[0, 0.018, n]}><boxGeometry args={[5.26, 0.008, 0.015]} /><meshBasicMaterial color={p.accent} toneMapped={false} /></mesh>
+        </group>
       ))}
-      <CableCoil at={[5.75, 1.99, -3.3]} />
-      <Box at={[3.1, 1.08, -3.3]} size={[0.34, 0.3, 0.34]} color="#1a1e24" metal={0.5} rough={0.4} />
-      <Figure at={[4.0, 0.93, -3.3]} character="luffy" rotY={-0.2} />
-      <Box at={[4.85, 1.07, -3.3]} size={[0.55, 0.26, 0.35]} color="#3b4a5a" rough={0.9} />
-      <Figure at={[5.6, 0.93, -3.3]} character="miles" rotY={-0.25} />
+      {[-2.66, 2.66].flatMap((x) => [-2.66, 2.66].map((z) => <Cyl key={`${x},${z}`} at={[x, 0.018, z]} r={0.023} h={0.012} color="#9aa3a3" metal={0.8} />))}
+      {/* Solid wood aprons and four tapered-looking trestle legs, all visible from the chair. */}
+      {[-3.9, 3.9].map((x) => (
+        <group key={x}>
+          {[-2.6, 2.6].map((z) => <Box key={z} at={[x, -1.28, z]} size={[0.26, 2.3, 0.3]} color="#573623" rot={[0, 0, -Math.sign(x) * 0.06]} />)}
+          <Box at={[x, -1.95, 0]} size={[0.2, 0.22, 5.4]} color="#573623" />
+        </group>
+      ))}
+      {[-3.05, 3.05].map((z) => <Box key={z} at={[0, -0.39, z]} size={[8.3, 0.3, 0.12]} color="#52311f" />)}
+      <Box at={[0, -1.95, -1.9]} size={[8, 0.18, 0.18]} color="#573623" />
+    </group>
+  );
+}
+
+function Window() {
+  const view = useMemo(() => canvasTex(512, 512, (g) => {
+    g.fillStyle = "#aec3c4"; g.fillRect(0, 0, 512, 512);
+    g.fillStyle = "#e9dabb"; g.beginPath(); g.arc(115, 105, 44, 0, Math.PI * 2); g.fill();
+    // Layered low-poly woodland, in the same illustrated material language as the room.
+    for (let layer = 0; layer < 3; layer++) {
+      g.fillStyle = ["#819b92", "#5f8074", "#3d6154"][layer];
+      g.beginPath(); g.moveTo(0, 512);
+      for (let x = -40; x <= 560; x += 65) {
+        const y = 245 + layer * 65 + Math.sin(x * 0.03 + layer) * 24;
+        g.lineTo(x, y + 80); g.lineTo(x + 32, y); g.lineTo(x + 65, y + 80);
+      }
+      g.lineTo(512, 512); g.closePath(); g.fill();
+    }
+  }), []);
+  useEffect(() => () => view.dispose(), [view]);
+  return (
+    <group name="left-window" position={[-4.85, 1.85, -4.68]}>
+      <mesh><planeGeometry args={[2.8, 3.5]} /><meshBasicMaterial map={view} toneMapped /></mesh>
+      {[-1.48, 1.48].map((x) => <Box key={x} at={[x, 0, 0.08]} size={[0.18, 3.85, 0.2]} color="#71492f" />)}
+      {[-1.82, 1.82].map((y) => <Box key={y} at={[0, y, 0.08]} size={[3.14, 0.18, 0.2]} color="#71492f" />)}
+      <Box at={[0, 0, 0.1]} size={[0.07, 3.5, 0.14]} color="#e2d5b9" />
+      <Box at={[0, 0.1, 0.1]} size={[2.8, 0.07, 0.14]} color="#e2d5b9" />
+      <Box at={[0, -1.87, 0.2]} size={[3.3, 0.12, 0.5]} color="#91613d" />
+      {/* Raised wooden blinds echo the cabin reference without hiding the daylight. */}
+      {[1.65, 1.49, 1.33].map((y) => <Box key={y} at={[0, y, 0.19]} size={[2.85, 0.1, 0.12]} color="#a47d52" rot={[0.35, 0, 0]} />)}
+      <Cyl at={[1.27, 0.75, 0.24]} r={0.008} h={1.85} color="#ddcdae" />
+      <pointLight position={[0, 0.3, 1.4]} intensity={32} distance={13} color="#c6dfdf" />
+    </group>
+  );
+}
+
+function Wall({ p, desktop = false }: { p: Palette; desktop?: boolean }) {
+  const wood = useMemo(() => woodTex(), []);
+  useEffect(() => () => wood.dispose(), [wood]);
+  return (
+    <>
+      <Box at={[0, 1, -4.9]} size={[16, 7.2, 0.25]} color="#39372f" />
+      <Box at={[-7.7, 1, 0]} size={[0.2, 7.2, 10]} color="#474237" />
+      <Box at={[7.7, 1, 0]} size={[0.2, 7.2, 10]} color="#302e29" />
+      {[-6.7, -3.12, 2.6, 6.55].map((x) => <Box key={x} at={[x, 1, -4.73]} size={[0.16, 7.2, 0.14]} color="#65472f" />)}
+      <Box at={[0, -2.2, -4.7]} size={[15.4, 0.22, 0.12]} color="#65472f" />
+      <mesh name="wood-plank-floor" position={[0, -2.45, 0]} rotation-x={-Math.PI / 2} receiveShadow>
+        <planeGeometry args={[15.4, 15]} /><meshStandardMaterial map={wood} color="#aa977f" roughness={0.88} />
+      </mesh>
+      <Window />
+      {/* Right-side built-in cabinet: dark backing, walnut shelves, collectible silhouettes. */}
+      <group name="right-figure-cabinet" position={[4.6, desktop ? -0.55 : 0, -4.48]}>
+        <Box at={[0, 0.65, -0.16]} size={[3.65, 6.05, 0.14]} color="#241f1a" />
+        {[-1.85, 1.85].map((x) => <Box key={x} at={[x, 0.65, 0.1]} size={[0.17, 6.1, 0.72]} color="#634129" rough={0.55} />)}
+        {[-2.32, -0.75, 0.35, 1.45, 2.55, 3.68].map((y) => <Box key={y} at={[0, y, 0.13]} size={[3.8, 0.12, 0.8]} color="#805336" rough={0.5} />)}
+        {[-0.8, 0.8].map((x) => <Box key={x} at={[x, -1.55, 0.3]} size={[1.5, 1.35, 0.16]} color="#5c3c28" />)}
+        {[-0.13, 0.13].map((x) => <Box key={x} at={[x, -1.45, 0.4]} size={[0.045, 0.22, 0.07]} color="#c2a675" metal={0.7} />)}
+        {(["miles", "luffy", "chopper", "zoro"] as const).map((character, i) => <Figure key={character} at={[-1.35 + i * 0.88, 2.61, 0.28]} character={character} h={0.72} rotY={-0.08} />)}
+        <Handheld at={[-1.3, 1.51, 0.26]} rotY={0.12} />
+        <Gpu p={p} at={[-0.42, 1.51, 0.26]} />
+        <Figure at={[0.5, 1.51, 0.26]} character="zoro" h={0.7} />
+        <Figure at={[1.32, 1.51, 0.26]} character="chopper" h={0.65} />
+        <Figure at={[-1.3, 0.41, 0.26]} character="luffy" h={0.72} />
+        {["#7a3a30", "#38503f", "#b39a69", "#475b70"].map((c, i) => <Box key={c} at={[-0.45 + i * 0.14, 0.69, 0.26]} size={[0.11, 0.56 - i * 0.03, 0.35]} color={c} rot={[0, 0, i === 3 ? -0.12 : 0]} />)}
+        <Figure at={[1.15, 0.41, 0.26]} character="miles" h={0.7} />
+        <CableCoil at={[-1.1, -0.58, 0.25]} />
+        <Box at={[0.4, -0.5, 0.26]} size={[1, 0.32, 0.45]} color="#526056" />
+        {[1.4, 2.5, 3.63].map((y) => <pointLight key={y} position={[0, y, 0.5]} intensity={3} distance={2.1} color="#ffcf93" />)}
+      </group>
     </>
   );
 }
 
-/** Dark-walnut picture frame hung on the wall: frame bars, off-white mat, placeholder picture. Size in world units. */
-function WallFrame({ at, w = 1.4, h = 1.8 }: { at: V3; w?: number; h?: number }) {
-  const pic = useMemo(() => placeholderTex(), []);
-  const F = 0.1; // frame bar width
-  const walnut = "#4a3320";
+/** A closer 3:4 portrait crop: keep the face readable instead of framing mostly sky. */
+function WallFrame({ at, w = 1.8, h = 2.45 }: { at: V3; w?: number; h?: number }) {
+  const source = useTexture("/images/huy-hoang.jpg");
+  const pic = useMemo(() => {
+    const crop = source.clone();
+    crop.repeat.set(0.5, 0.5);
+    crop.offset.set(0.25, 0.23);
+    crop.needsUpdate = true;
+    return crop;
+  }, [source]);
+  useEffect(() => () => pic.dispose(), [pic]);
+  const F = 0.09;
   return (
-    <group position={at}>
-      <Box at={[0, (h - F) / 2, 0.03]} size={[w, F, 0.06]} color={walnut} rough={0.55} />
-      <Box at={[0, -(h - F) / 2, 0.03]} size={[w, F, 0.06]} color={walnut} rough={0.55} />
-      <Box at={[-(w - F) / 2, 0, 0.03]} size={[F, h - 2 * F, 0.06]} color={walnut} rough={0.55} />
-      <Box at={[(w - F) / 2, 0, 0.03]} size={[F, h - 2 * F, 0.06]} color={walnut} rough={0.55} />
-      <mesh position={[0, 0, 0.012]}>
-        <planeGeometry args={[w - 2 * F, h - 2 * F]} />
-        <meshStandardMaterial color="#e9e4d8" roughness={0.95} />
-      </mesh>
-      <mesh position={[0, 0, 0.016]}>
-        <planeGeometry args={[w - 2 * F - 0.24, h - 2 * F - 0.3]} />
-        <meshStandardMaterial map={pic} emissiveMap={pic} emissive="#ffffff" emissiveIntensity={0.25} roughness={0.8} />
+    <group name="wall-portrait" position={at}>
+      <Box at={[0, 0, 0]} size={[w, h, 0.06]} color="#e9e4d8" />
+      {[-1, 1].map((s) => <group key={s}>
+        <Box at={[0, s * (h - F) / 2, 0.05]} size={[w, F, 0.09]} color="#4a3320" rough={0.5} />
+        <Box at={[s * (w - F) / 2, 0, 0.05]} size={[F, h - 2 * F, 0.09]} color="#4a3320" rough={0.5} />
+      </group>)}
+      <mesh position={[0, 0, 0.04]}>
+        <planeGeometry args={[w - 2 * F - 0.14, (w - 2 * F - 0.14) * 4 / 3]} />
+        <meshStandardMaterial map={pic} emissiveMap={pic} emissive="#ffffff" emissiveIntensity={0.2} roughness={0.8} />
       </mesh>
     </group>
   );
 }
 
-/** The engineer's kit along the front of the bench, clear of the hologram labels. */
 function DeskGear({ p }: { p: Palette }) {
   return (
     <>
-      <Editable3D id="keyboard" position={[0.05, 0, 1.2]}><Keyboard p={p} at={[0, 0, 0]} /></Editable3D>
-      <Editable3D id="mouse" position={[1.55, 0, 1.2]}><Mouse p={p} at={[0, 0, 0]} /></Editable3D>
-      <Editable3D id="headset" position={[-1.5, 0, 1.25]}><Headset p={p} at={[0, 0, 0]} rotY={0.4} /></Editable3D>
-      <Editable3D id="duck" position={[-2.0, 0, 1.45]}><Duck at={[0, 0, 0]} rotY={0.5} /></Editable3D>
+      <Editable3D id="keyboard" position={[0.05, 0, 2.99]}><Keyboard p={p} at={[0, 0, 0]} /></Editable3D>
+      <Editable3D id="mouse" position={[1.55, 0, 2.99]}><Mouse p={p} at={[0, 0, 0]} /></Editable3D>
+      <Editable3D id="headset" position={[-4, 0, 1.5]}><Headset p={p} at={[0, 0, 0]} rotY={0.4} /></Editable3D>
+      <Editable3D id="duck" position={[-0.5, 0, 2.65]}><Duck at={[0, 0, 0]} rotY={0.5} /></Editable3D>
+      {/* Small working mess around the clear projection field, not in its hit targets. */}
+      <group position={[-3.55, 0.02, -0.45]} rotation-y={0.18}>
+        <Box at={[0, 0.015, 0]} size={[0.75, 0.035, 0.94]} color="#293c37" />
+        <Box at={[0.04, 0.04, 0.03]} size={[0.65, 0.018, 0.82]} color="#dfd3b5" rot={[0, -0.12, 0]} />
+        {[0, 1, 2, 3].map((n) => <Box key={n} at={[-0.04, 0.05, -0.18 + n * 0.1]} size={[0.36 - n * 0.04, 0.002, 0.006]} color="#777765" rot={[0, -0.12, 0]} />)}
+        <Cyl at={[0.2, 0.065, 0.02]} r={0.016} h={0.55} color="#b59b64" rot={[Math.PI / 2, 0, -0.25]} />
+      </group>
+      <Multimeter at={[3.55, 0.07, 1.2]} />
+      <ScrewdriverSet at={[3.6, 0.04, -1.45]} />
+      <group position={[-3.5, 0.13, -2.2]} rotation={[-Math.PI / 2, 0, 0]}><SolderingIron at={[0, 0, 0]} /></group>
+      <Box at={[3.6, 0.025, -0.4]} size={[0.6, 0.04, 0.48]} color="#294d3c" rot={[0, 0.25, 0]} />
+      <Box at={[3.6, 0.07, -0.4]} size={[0.23, 0.05, 0.23]} color="#232629" metal={0.7} />
+      {[-0.2, 0.2].map((x) => <Cyl key={x} at={[3.6 + x, 0.06, -0.25]} r={0.035} h={0.05} color="#c6ac6f" metal={0.7} />)}
     </>
   );
 }
 
-/** Hanging work lamp: warm pool of light that makes the wood and wall read as a real room. */
-function Lamp() {
+function DeskLight() {
+  useEffect(() => { RectAreaLightUniformsLib.init(); }, []);
   return (
-    <group position={[1.9, 0, -2.2]}>
-      <Cyl at={[0, 4.2, 0]} r={0.012} h={2.2} color="#111" />
-      <mesh position={[0, 3.1, 0]}>
-        <coneGeometry args={[0.38, 0.3, 32, 1, true]} />
-        <meshStandardMaterial color="#2b3038" metalness={0.6} roughness={0.4} side={2} />
+    <group name="square-desk-led" position={[1.9, 3.65, -2.7]}>
+      {[-0.65, 0.65].flatMap((x) => [-0.65, 0.65].map((z) => (
+        <Cyl key={`${x},${z}`} at={[x, 1, z]} r={0.008} h={1.9} color="#343a3b" />
+      )))}
+      <group rotation-x={-0.4}>
+      <RoundedBox args={[1.6, 0.12, 1.6]} radius={0.04} smoothness={3}>
+        <meshStandardMaterial color="#323a3d" roughness={0.5} metalness={0.4} />
+      </RoundedBox>
+      <mesh name="led-diffuser" position-y={-0.065} rotation-x={Math.PI / 2}>
+        <planeGeometry args={[1.4, 1.4]} />
+        <meshBasicMaterial color="#f4ead7" />
       </mesh>
-      <mesh position={[0, 3.0, 0]}>
-        <sphereGeometry args={[0.08, 16, 16]} />
-        <meshBasicMaterial color="#ffd9a0" toneMapped={false} />
-      </mesh>
-      <pointLight position={[0, 2.9, 0.4]} intensity={22} distance={14} decay={2} color="#ffd6a8" />
+      {/* Broad neutral-warm task lighting, rather than a bulb hotspot on the projector. */}
+      <rectAreaLight position={[0, -0.075, 0]} rotation={[-Math.PI / 2, 0, 0]} width={1.4} height={1.4} intensity={8} color="#fff0da" />
+      </group>
     </group>
   );
 }
 
-/** A real (solid, original-material) model standing on the bench, scaled so its longest side is `size`. */
+/** A solid model resting on its lowest point, scaled by its longest side. */
 export function RealProp({ url, at, size, rotY = 0 }: { url: string; at: V3; size: number; rotY?: number }) {
   const { scene } = useGLTF(url);
   const model = useMemo(() => {
@@ -212,21 +252,20 @@ export function RealProp({ url, at, size, rotY = 0 }: { url: string; at: V3; siz
   return <group position={at} rotation-y={rotY}><primitive object={model} /></group>;
 }
 
-export default function Workshop({ p }: { p: Palette }) {
+export default function Workshop({ p, desktop = false }: { p: Palette; desktop?: boolean }) {
   return (
     <>
-      <hemisphereLight args={["#8a9bb0", "#1c2128", 0.5]} />
-      {/* reflections for the steel: a big warm softbox plus cyan/red strips behind the bench, rendered once */}
-      <Environment resolution={128} frames={1} environmentIntensity={0.25}>
-        <Lightformer form="rect" intensity={1.8} color="#e6f0fa" position={[0, 4, -6]} scale={[14, 3, 1]} />
-        <Lightformer form="rect" intensity={2} color={p.accent} position={[-7, 2, -2]} rotation-y={Math.PI / 2} scale={[8, 1.2, 1]} />
-        <Lightformer form="rect" intensity={1} color={p.primary} position={[7, 2, -2]} rotation-y={-Math.PI / 2} scale={[8, 1.2, 1]} />
+      <hemisphereLight args={["#e0d7bf", "#4d3827", 1.15]} />
+      <directionalLight position={[-5, 6, 3]} intensity={2.2} color="#ffe1b2" castShadow shadow-mapSize={[1024, 1024]} shadow-camera-left={-8} shadow-camera-right={8} shadow-camera-top={8} shadow-camera-bottom={-8} shadow-bias={-0.001} />
+      <Environment resolution={128} frames={1} environmentIntensity={0.35}>
+        <Lightformer form="rect" intensity={1.8} color="#f6dfba" position={[-5, 4, 0]} scale={[4, 4, 1]} />
+        <Lightformer form="rect" intensity={1} color={p.accent} position={[0, 2, -2]} scale={[5, 1.2, 1]} />
       </Environment>
       <Bench p={p} />
-      <Wall p={p} />
+      <Wall p={p} desktop={desktop} />
       <DeskGear p={p} />
-      <WallFrame at={[-2.55, 2.4, -3.58]} />
-      <Lamp />
+      <WallFrame at={[-2.05, 1.4, -4.69]} />
+      <DeskLight />
     </>
   );
 }

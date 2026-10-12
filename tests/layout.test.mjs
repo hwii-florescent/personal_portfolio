@@ -1,9 +1,25 @@
 // Run: npm run test:layout
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { editableItems, validLayout, localEditorRequest, clampScale, idForView, viewOf } from "../src/data/layout.ts";
+import { editableItems, validLayout, localEditorRequest, clampScale, idForView, viewOf, isCamera, CAM, cameraLimits } from "../src/data/layout.ts";
 
 assert(validLayout({}));
+const cameraHome = { position: [...CAM.pos], scale: 1 };
+const cameraSection = { position: [3, 5, 9], scale: 1 };
+const cameras = { "camera-home": cameraHome, "camera-section": cameraSection };
+assert(validLayout(cameras));
+assert.equal(viewOf("camera-home"), "home");
+assert.equal(viewOf("camera-section"), "section");
+delete cameras["camera-section"];
+assert.deepEqual(cameras["camera-home"], cameraHome, "Resetting a section camera must preserve Home");
+for (const position of [[0, 0.4, 0], [0, 0.4, 8], [0, -2, 8], [0, 5, -8], [0, 5, 19], [NaN, 5, 8]]) {
+  assert(!validLayout({ "camera-home": { position, scale: 1 } }), "Reject unsafe or degenerate camera poses");
+}
+for (const distance of cameraLimits.distance) for (const elevation of cameraLimits.elevation) for (const azimuth of cameraLimits.azimuth) {
+  const phi = (90 - elevation) * Math.PI / 180, theta = azimuth * Math.PI / 180;
+  const position = [distance * Math.sin(phi) * Math.sin(theta), CAM.at[1] + distance * Math.cos(phi), distance * Math.sin(phi) * Math.cos(theta)];
+  assert(validLayout({ "camera-section": { position, scale: 1 } }), "Slider/orbit boundaries must survive the Cartesian round trip");
+}
 for (const id of ["keyboard", "mouse", "headset", "duck", "mug", "pens"]) {
   assert.equal(idForView(id, false), id);
   assert.equal(idForView(id, true), `section-${id}`);
@@ -23,7 +39,7 @@ for (const id of ["profile", "monitor-open", "skills", "pad-skills", "section-mu
 }
 assert(validLayout({ profile: { position: [1, -2, 0], scale: 1.25 } })); // legacy saved layouts
 assert(validLayout({ profile: { position: [0, 0, 0], scale: 1, rotation: -Math.PI, width: 0.25, height: 3 } }));
-for (const id of Object.keys(editableItems)) {
+for (const id of Object.keys(editableItems).filter(id => !isCamera(id))) {
   assert(validLayout({ [id]: { position: [0, 0, 0], scale: 1, rotation: Math.PI } }), `${id} supports rotation`);
 }
 for (const [key, values] of Object.entries({ rotation: [NaN, Infinity, -Math.PI - 0.01, Math.PI + 0.01, "90", null], width: [NaN, Infinity, 0.2, 3.1, "1", null], height: [NaN, Infinity, 0.2, 3.1, "1", null] })) {
@@ -65,7 +81,9 @@ const scene = await readFile(new URL("../src/components/Scene.tsx", import.meta.
 const label = scene.match(/<\/Editable3D>\s*\{\/\* World-space sibling:[\s\S]*?<Text\s+([\s\S]*?)>/)?.[1];
 assert(label, "Section labels must be outside the editable rotation/scale wrapper");
 assert(label.includes('fontSize={0.1}') && !/\bscale[=\s-]/.test(label), "Section labels keep a fixed text size");
-assert(label.includes('rotation-x={-1.15}'), "Section labels keep their forward-facing desk angle");
+assert(label.includes('rotation-x={rail ? 0 : -1.15}'), "Home labels stay engraved; section labels are upright");
+assert(scene.includes('label.current.quaternion.copy(camera.quaternion)'), "Section labels follow the live camera orientation");
+assert(scene.includes('label.current.position.addScaledVector(labelDirection, 0.85 * worldScale.x)'), "Section labels stay in front of the pads relative to the camera");
 assert(label.includes('material-depthTest={false}'), "Objects must not obscure section labels");
 assert(scene.includes('grp.getWorldPosition(label.current.position)'), "Labels follow live pad movement, including gizmo drags");
 assert(scene.includes('label.current.position.z += 0.85 * worldScale.x'), "Labels stay in front of resized pads without inheriting yaw");
