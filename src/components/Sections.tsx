@@ -9,7 +9,7 @@ const family = { sans: "var(--font-inter)", sansMedium: "var(--font-inter)", mon
 function BlockView({ b, gap }: { b: Block; gap: number }) {
   const s = style[b.kind];
   const css: CSSProperties = {
-    marginTop: gap, fontFamily: family[s.font], fontWeight: s.font === "sansMedium" ? 500 : 400, fontSize: s.size,
+    marginTop: gap, fontFamily: family[s.font], fontWeight: s.font === "sansMedium" ? 500 : 400, fontSize: `var(--doc-${b.kind}-size, ${s.size}px)`,
     lineHeight: s.line, color: tone[s.tone], letterSpacing: s.track ? `${s.track}em` : undefined, textTransform: s.upper ? "uppercase" : undefined,
   };
   const text = b.runs.map((r, i) => (r.tone ? <span key={i} style={{ color: tone[r.tone] }}>{r.t}</span> : r.t));
@@ -42,7 +42,7 @@ function EntryView({ e, first }: { e: Entry; first: boolean }) {
     out.push(<ul key={i} style={{ marginTop: gap }}>{e.slice(i, j).map((b, k) => <BlockView key={k} b={b} gap={k ? style.bullet.gap : 0} />)}</ul>);
     i = j - 1;
   }
-  return <div style={{ marginTop: first ? 0 : ENTRY_GAP }}>{out}</div>;
+  return <div className="document-entry" style={{ marginTop: first ? 0 : ENTRY_GAP }}>{out}</div>;
 }
 
 /** Server-safe: used in the HUD panel and, for all sections, in the sr-only SEO copy. */

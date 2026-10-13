@@ -3,7 +3,7 @@
 import { Canvas, useFrame, useThree, type ThreeEvent } from "@react-three/fiber";
 import { OrbitControls, PerformanceMonitor, Sparkles, Text, useGLTF } from "@react-three/drei";
 import { Bloom, EffectComposer } from "@react-three/postprocessing";
-import { MathUtils, AdditiveBlending, Color, DoubleSide, Vector3, type Group, type Mesh, type Points, type ShaderMaterial } from "three";
+import { MathUtils, Vector3, type Group, type Mesh, type Points, type ShaderMaterial } from "three";
 import { timer, TimerTick } from "@/lib/timer";
 import { Suspense, useEffect, useRef, useState, type RefObject } from "react";
 import { sections, type SectionId } from "@/data/sections";
@@ -13,6 +13,7 @@ import Monitor, { useFocusPose } from "./HtmlPanel";
 import Workshop, { RealProp } from "./Workshop";
 import { Editable3D, useLayout } from "./LayoutEditor";
 import { CAM, cameraLimits, identity } from "@/data/layout";
+import { SPEECH_HEIGHTS, TYPE_MS } from "@/data/intro";
 
 
 const FONT = "/fonts/Orbitron.ttf";
@@ -33,44 +34,10 @@ const slot = (i: number): [number, number, number] => {
   return [k * 1.25, 0, -Math.abs(k) * 0.3 - 0.2];
 };
 
-const beamVert = /* glsl */ `varying float vH; void main(){ vH = uv.y; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0);} `;
-const beamFrag = /* glsl */ `uniform vec3 uColor; uniform float uA; varying float vH;
-  void main(){ gl_FragColor = vec4(uColor, pow(1.0 - vH, 2.0) * uA); }`;
-
-/** Emitter pad on the desk: glowing rings plus a soft light cone rising to the hologram. */
-function Emitter({ p, lit }: { p: Palette; lit: boolean }) {
-  const beam = useRef<Group>(null);
-  useFrame((_, dt) => {
-    if (beam.current) beam.current.scale.y = MathUtils.damp(beam.current.scale.y, lit ? 1.6 : 1, 5, dt);
-  });
-  return (
-    <group scale={0.7}>
-      <mesh rotation-x={-Math.PI / 2} position-y={0.012}>
-        <ringGeometry args={[0.62, 0.68, 64]} />
-        <meshBasicMaterial color={p.accent} toneMapped={false} />
-      </mesh>
-      <mesh rotation-x={-Math.PI / 2} position-y={0.008}>
-        <circleGeometry args={[0.62, 48]} />
-        <meshBasicMaterial color={p.accent} transparent opacity={lit ? 0.22 : 0.1} blending={AdditiveBlending} depthWrite={false} />
-      </mesh>
-      <group ref={beam}>
-        <mesh position-y={0.7}>
-          <cylinderGeometry args={[0.55, 0.62, 1.4, 40, 1, true]} />
-          <shaderMaterial
-            vertexShader={beamVert}
-            fragmentShader={beamFrag}
-            uniforms={{ uColor: { value: new Color(p.accent) }, uA: { value: lit ? 0.25 : 0.14 } }}
-            transparent depthWrite={false} side={DoubleSide} blending={AdditiveBlending}
-          />
-        </mesh>
-      </group>
-    </group>
-  );
-}
-
-function Slot({ i, p, active, onSelect, motion, focus }: {
-  i: number; p: Palette; active: SectionId | null; onSelect: (id: SectionId | null) => void; motion: number; focus: boolean;
+function Slot({ i, p, active, onSelect, motion, focus, show }: {
+  i: number; p: Palette; active: SectionId | null; onSelect: (id: SectionId | null) => void; motion: number; focus: boolean; show: boolean;
 }) {
+  const ap = useRef(show ? 1 : 0); // appear factor: the intro holds the holograms back, then they grow in
   const s = sections[i];
   const g = useRef<Group>(null);
   const holo = useRef<Group>(null);
@@ -92,8 +59,8 @@ function Slot({ i, p, active, onSelect, motion, focus }: {
   const tCur = rail ? tOpen : tHome; // the wrapper (Editable3D) currently in use
   const base = rail ? pose.pads[i] : home;
   const ev = {
-    onClick: (e: ThreeEvent<MouseEvent>) => { e.stopPropagation(); if (editing) { if (!editor.cameraEditing) editor.select(id); } else onSelect(selected ? null : s.id); },
-    onPointerOver: (e: ThreeEvent<PointerEvent>) => { e.stopPropagation(); setHover(true); document.body.style.cursor = "pointer"; },
+    onClick: (e: ThreeEvent<MouseEvent>) => { if (!show) return; e.stopPropagation(); if (editing) { if (!editor.cameraEditing) editor.select(id); } else onSelect(selected ? null : s.id); },
+    onPointerOver: (e: ThreeEvent<PointerEvent>) => { if (!show) return; e.stopPropagation(); setHover(true); document.body.style.cursor = "pointer"; },
     onPointerOut: () => { setHover(false); document.body.style.cursor = ""; },
   };
 
@@ -112,7 +79,9 @@ function Slot({ i, p, active, onSelect, motion, focus }: {
       L(home[2] + tHome.position[2], o[2] + tOpen.position[2], k) - base[2] - tCur.position[2],
     ).divideScalar(tCur.scale).applyAxisAngle(UP, -(tCur.rotation ?? 0));
     grp.rotation.y = L(tHome.rotation ?? 0, tOpen.rotation ?? 0, k) - (tCur.rotation ?? 0);
-    grp.scale.setScalar(L(tHome.scale, pose.padScale * tOpen.scale, k) / tCur.scale);
+    ap.current = motion ? MathUtils.damp(ap.current, show ? 1 : 0, 3, dt) : Number(show);
+    grp.visible = ap.current > 0.01;
+    grp.scale.setScalar(Math.max(ap.current, 1e-4) * L(tHome.scale, pose.padScale * tOpen.scale, k) / tCur.scale);
     const sc = selected ? 1.15 : hover && !editing ? 1.12 : 1;
     h.scale.setScalar(MathUtils.damp(h.scale.x, sc, 6, dt));
     const bob = motion && !editing ? Math.sin(timer.getElapsed() * 1.2 + i) * 0.04 : 0;
@@ -121,6 +90,7 @@ function Slot({ i, p, active, onSelect, motion, focus }: {
     hit.current?.scale.set(L(1, 0.6, k), 1, L(1, 0.6, k));
     // Follow the live world position (including gizmo drags), not the pad's yaw or text scale.
     if (label.current) {
+      label.current.visible = grp.visible;
       grp.getWorldPosition(label.current.position);
       grp.getWorldScale(worldScale);
       label.current.position.y += 0.02;
@@ -138,21 +108,20 @@ function Slot({ i, p, active, onSelect, motion, focus }: {
   return (
     <>
     <Editable3D id={id} position={base}>
-    <group ref={g}>
-      <Emitter p={p} lit={selected || hover} />
+    <group ref={g} visible={show}>
       <group ref={holo} position-y={0.2} {...ev}>
         <Suspense fallback={null}>
           <Hologram url={s.model} p={p} opacity={rail && !selected && !hover ? 0.55 : 1} boost={hover || selected ? 0.35 : 0} motion={editing ? 0 : motion} />
         </Suspense>
       </group>
-      {/* Solid target inside the emitter rim: no oversized invisible volume over neighbouring sections. */}
+      {/* Tight invisible target: no oversized volume over neighbouring sections. */}
       <mesh ref={hit} name={`target-${s.id}`} position-y={0.6} visible={false} {...ev}>
         <cylinderGeometry args={[0.4, 0.4, 0.65, 16]} />
       </mesh>
     </group>
     </Editable3D>
     {/* World-space sibling: desk engraving at home, camera-facing labels in section view. */}
-    <group ref={label} name={`label-${s.id}`}>
+    <group ref={label} name={`label-${s.id}`} visible={show}>
       <Text
         font={FONT} fontSize={0.1} letterSpacing={0.25} rotation-x={rail ? 0 : -1.15}
         renderOrder={10} material-depthTest={false} material-depthWrite={false}
@@ -165,11 +134,58 @@ function Slot({ i, p, active, onSelect, motion, focus }: {
   );
 }
 
-function Rig({ active, focus }: { active: SectionId | null; focus: boolean }) {
+/** Fixed to the pad's world-space center: the speech projects upward once, not toward the camera. */
+function Speech({ text, p, instant, height }: { text: string; p: Palette; instant: boolean; height: number }) {
+  const rise = useRef<Group>(null);
+  useFrame((_, dt) => {
+    if (rise.current) rise.current.position.y = instant ? height : MathUtils.damp(rise.current.position.y, height, 3, dt);
+  });
+  return (
+    <group name="speech-projector" position={[0, 0.025, 0]}>
+      <group ref={rise} name="speech-text" position-y={instant ? height : 0.06}>
+        <SpeechLine key={text} text={text} p={p} instant={instant} />
+      </group>
+    </group>
+  );
+}
+
+/** Key the line, not the projector: new speech retypes without dropping back onto the pad. */
+function SpeechLine({ text, p, instant }: { text: string; p: Palette; instant: boolean }) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (instant) return;
+    const id = setInterval(() => setN((v) => (v >= text.length ? (clearInterval(id), v) : v + 1)), TYPE_MS);
+    return () => clearInterval(id);
+  }, [text, instant]);
+  const shown = instant ? text : text.slice(0, n);
+  const glow = { color: p.accent, outlineWidth: 0.006, outlineColor: p.accent, outlineOpacity: 0.35, "material-toneMapped": false, "material-depthWrite": false } as const;
+  return (
+    <group>
+      <Text font={FONT} fontSize={0.07} letterSpacing={0.3} position-y={0.14} anchorY="bottom" {...glow} color={p.gold} outlineColor={p.gold}>
+        {`▸ ${p.ai}`}
+      </Text>
+      <Text font={FONT} fontSize={text.length < 40 ? 0.26 : 0.15} maxWidth={5.2} lineHeight={1.35} textAlign="center" anchorY="top" renderOrder={10} {...glow}>
+        {shown}
+      </Text>
+    </group>
+  );
+}
+
+function Rig({ active, focus, intro }: { active: SectionId | null; focus: boolean; intro: boolean }) {
   const editor = useLayout();
   const camera = useThree((s) => s.camera);
   const id = active ? "camera-section" : "camera-home";
-  const position = editor?.layout[id]?.position ?? CAM.pos;
+  const position = [...(editor?.layout[id]?.position ?? CAM.pos)];
+  // Intro orbits at 21° with the saved home distance and yaw; revealing the modules restores the saved 30° home pose.
+  if (intro && !active && !editor?.editing) {
+    const radius = Math.hypot(position[0], position[1] - CAM.at[1], position[2]);
+    const yaw = Math.atan2(position[0], position[2]);
+    const elevation = MathUtils.degToRad(21);
+    position[0] = radius * Math.cos(elevation) * Math.sin(yaw);
+    position[1] = CAM.at[1] + radius * Math.sin(elevation);
+    position[2] = radius * Math.cos(elevation) * Math.cos(yaw);
+  }
+  const firstFrame = useRef(true);
   const cameraEditing = !!editor?.cameraEditing;
   const interacting = useRef(false);
   useEffect(() => { interacting.current = false; }, [id, cameraEditing]);
@@ -181,12 +197,18 @@ function Rig({ active, focus }: { active: SectionId | null; focus: boolean }) {
 
   useFrame(({ camera, pointer, size }, dt) => {
     if (cameraEditing) return; // OrbitControls owns the camera while adjusting a view.
+    if (firstFrame.current) {
+      if (intro && !editor?.editing) camera.position.fromArray(position); // start at 21°, rather than flying there from the Canvas default
+      firstFrame.current = false;
+    }
     const flat = active && !focus;
     const zoom = size.width < 768 ? Math.max(1, 1.4 * size.height / size.width) : 1;
-    const parallax = editor?.editing ? 0 : 1;
-    camera.position.x = MathUtils.damp(camera.position.x, position[0] * zoom + pointer.x * 0.35 * parallax, 2.5, dt);
-    camera.position.y = MathUtils.damp(camera.position.y, CAM.at[1] + (position[1] - CAM.at[1]) * zoom - (flat ? 0.3 : 0) + pointer.y * 0.12 * parallax, 2.5, dt);
-    camera.position.z = MathUtils.damp(camera.position.z, position[2] * zoom - (flat ? 0.4 : 0), 2.5, dt);
+    const parallax = active || editor?.editing ? 0 : 0.01; // Barely perceptible at the desk; no mouse tilt while reading.
+    // Opening: settle just ahead of the monitor's fixed-length flight (HtmlPanel FLIGHT) so the profile lands on the résumé's box.
+    const rate = active ? 4.5 : 2.5;
+    camera.position.x = MathUtils.damp(camera.position.x, position[0] * zoom + pointer.x * 0.35 * parallax, rate, dt);
+    camera.position.y = MathUtils.damp(camera.position.y, CAM.at[1] + (position[1] - CAM.at[1]) * zoom - (flat ? 0.3 : 0) + pointer.y * 0.12 * parallax, rate, dt);
+    camera.position.z = MathUtils.damp(camera.position.z, position[2] * zoom - (flat ? 0.4 : 0), rate, dt);
     camera.lookAt(flat ? -0.6 : CAM.at[0], CAM.at[1], CAM.at[2]);
   }, -2); // before the controls and the monitor's DOM projection
 
@@ -202,9 +224,16 @@ function Rig({ active, focus }: { active: SectionId | null; focus: boolean }) {
   ) : null;
 }
 
-export default function Scene({ p, active, onSelectAction, motion, panel3d, faceRef }: {
+/** Mounts only once everything in the canvas (textures, models) has loaded, i.e. when the first real frame can be shown. */
+function Ready({ onReady }: { onReady: () => void }) {
+  useEffect(onReady, [onReady]);
+  return null;
+}
+
+export default function Scene({ p, active, onSelectAction, motion, panel3d, faceRef, onReadyAction, speech, holograms }: {
   p: Palette; active: SectionId | null; onSelectAction: (id: SectionId | null) => void; motion: number; panel3d?: boolean;
-  faceRef: RefObject<HTMLDivElement | null>;
+  faceRef: RefObject<HTMLDivElement | null>; onReadyAction: () => void;
+  speech: string | null; holograms: boolean; // intro: what the AI says now, and whether the holograms may appear yet
 }) {
   // Low-end GPUs: when the frame rate stays below the monitor's bounds, drop to 1x resolution and skip Bloom.
   // ponytail: one-way (no recovery) so it cannot flip-flop; upgrade to onIncline if recovery is wanted.
@@ -214,6 +243,7 @@ export default function Scene({ p, active, onSelectAction, motion, panel3d, face
     <Canvas shadows="percentage" camera={{ position: [...CAM.pos], fov: 48 }} dpr={low ? 1 : [1, 2]} gl={{ antialias: true }} aria-hidden="true">
       <PerformanceMonitor onDecline={() => setLow(true)} />
       <TimerTick />
+      <Ready onReady={onReadyAction} />
       <color attach="background" args={[p.bg]} />
       <fog attach="fog" args={[p.bg, 38, 65]} />
       <ambientLight intensity={0.25} />
@@ -224,11 +254,12 @@ export default function Scene({ p, active, onSelectAction, motion, panel3d, face
         <Editable3D id="pens" position={[3.6, 0, 2.35]}><RealProp url="/models/pens.glb" at={[0, 0, 0]} size={0.65} rotY={-0.4} /></Editable3D>
       </Suspense>
       {sections.map((_, i) => (
-        <Slot key={i} i={i} p={p} active={active} onSelect={onSelectAction} motion={motion} focus={focus} />
+        <Slot key={i} i={i} p={p} active={active} onSelect={onSelectAction} motion={motion} focus={focus} show={holograms && active === null} />
       ))}
+      {speech && <Speech text={speech} p={p} instant={motion === 0} height={holograms ? SPEECH_HEIGHTS.modules : SPEECH_HEIGHTS.intro} />}
       <Sparkles ref={clampSparkles} count={70} scale={[12, 3, 6]} position={[0, 1.2, -0.5]} size={2} speed={motion * 0.25} color={p.accent} />
-      {panel3d && <Monitor p={p} active={active} faceRef={faceRef} />}
-      <Rig active={active} focus={focus} />
+      {panel3d && holograms && <Monitor p={p} active={active} faceRef={faceRef} />}
+      <Rig active={active} focus={focus} intro={!holograms} />
       {!low && (
         <EffectComposer>
           <Bloom mipmapBlur intensity={0.7} luminanceThreshold={0.45} luminanceSmoothing={0.3} />

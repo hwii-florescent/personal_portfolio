@@ -27,6 +27,8 @@ for (const quad of [
     close([p[0] + left, p[1] + top], quad[i]);
   });
 }
+assert(quadToCss(W, H, [[0, 0], [W, 0], [W - 0.01, H], [0, H]]).startsWith("matrix3d("),
+  "Even mild real perspective must remain projective");
 assert.equal(quadToCss(W, H, [[0, 0], [0, 0], [0, 0], [0, 0]]), null, "degenerate quad");
 assert.equal(quadToCss(W, H, [[0, 0], [100, 0], [0, 100], [100, 100]]), null, "self-crossing quad");
 

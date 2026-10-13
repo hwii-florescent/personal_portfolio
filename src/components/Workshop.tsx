@@ -214,24 +214,28 @@ function DeskGear({ p }: { p: Palette }) {
   );
 }
 
-function DeskLight() {
+// Hidden-LED-strip look: a thin square outline of light on the ceiling, about 75% of the room's floor each way (room interior: 15.4 x 10).
+// Lines only, no fixture. Each edge also casts a soft area light downward so the room is still lit.
+export const LED = { w: 11.5, d: 7.5, y: 4.55, z: 0.1, t: 0.07, color: "#fff0da" } as const;
+function CeilingLed() {
   useEffect(() => { RectAreaLightUniformsLib.init(); }, []);
+  const edges = [
+    { at: [0, LED.y, LED.z - LED.d / 2], size: [LED.w, LED.t, LED.t], light: [LED.w, 0.4] },
+    { at: [0, LED.y, LED.z + LED.d / 2], size: [LED.w, LED.t, LED.t], light: [LED.w, 0.4] },
+    { at: [-LED.w / 2, LED.y, LED.z], size: [LED.t, LED.t, LED.d], light: [0.4, LED.d] },
+    { at: [LED.w / 2, LED.y, LED.z], size: [LED.t, LED.t, LED.d], light: [0.4, LED.d] },
+  ] as const;
   return (
-    <group name="square-desk-led" position={[1.9, 3.65, -2.7]}>
-      {[-0.65, 0.65].flatMap((x) => [-0.65, 0.65].map((z) => (
-        <Cyl key={`${x},${z}`} at={[x, 1, z]} r={0.008} h={1.9} color="#343a3b" />
-      )))}
-      <group rotation-x={-0.4}>
-      <RoundedBox args={[1.6, 0.12, 1.6]} radius={0.04} smoothness={3}>
-        <meshStandardMaterial color="#323a3d" roughness={0.5} metalness={0.4} />
-      </RoundedBox>
-      <mesh name="led-diffuser" position-y={-0.065} rotation-x={Math.PI / 2}>
-        <planeGeometry args={[1.4, 1.4]} />
-        <meshBasicMaterial color="#f4ead7" />
-      </mesh>
-      {/* Broad neutral-warm task lighting, rather than a bulb hotspot on the projector. */}
-      <rectAreaLight position={[0, -0.075, 0]} rotation={[-Math.PI / 2, 0, 0]} width={1.4} height={1.4} intensity={8} color="#fff0da" />
-      </group>
+    <group name="ceiling-led">
+      {edges.map((e, i) => (
+        <group key={i} position={e.at}>
+          <mesh name="led-strip">
+            <boxGeometry args={[...e.size]} />
+            <meshBasicMaterial color={LED.color} toneMapped={false} />
+          </mesh>
+          <rectAreaLight position={[0, -0.05, 0]} rotation={[-Math.PI / 2, 0, 0]} width={e.light[0]} height={e.light[1]} intensity={3} color={LED.color} />
+        </group>
+      ))}
     </group>
   );
 }
@@ -265,7 +269,7 @@ export default function Workshop({ p, desktop = false }: { p: Palette; desktop?:
       <Wall p={p} desktop={desktop} />
       <DeskGear p={p} />
       <WallFrame at={[-2.05, 1.4, -4.69]} />
-      <DeskLight />
+      <CeilingLed />
     </>
   );
 }

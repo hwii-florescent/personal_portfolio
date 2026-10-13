@@ -26,6 +26,8 @@ export const BULLET_INDENT = 16;
 
 // Panel size in CSS px for the 3D panel (h is tuned so it covers ~70% of the viewport height) (the flat mobile panel is responsive and only borrows pad/header).
 export const PANEL = { w: 500, h: 660, pad: 24, header: 72 };
+// Reading view is a landscape monitor; the home profile keeps its original portrait size.
+export const RESUME_PANEL = { w: 960, h: 640 };
 
 const t = (s: string, tone?: Tone): Run => ({ t: s, tone });
 const b = (kind: Kind, ...runs: Run[]): Block => ({ kind, runs });

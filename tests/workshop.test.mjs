@@ -9,6 +9,7 @@ import * as THREE from 'three';
 
 const require = createRequire(import.meta.url);
 const effects = [];
+let reducedMotion = false;
 const lettering = [];
 const context = new Proxy({}, { get: (_, key) => key === 'fillText' ? text => lettering.push(text) : () => {} });
 const react = { useMemo: fn => fn(), useEffect: fn => effects.push(fn), useCallback: fn => fn,
@@ -23,12 +24,13 @@ function compile(path, extra = '', imports = {}) {
     module: sandboxModule, exports: sandboxModule.exports,
     require: name => name === 'react' ? react : name === 'three' ? THREE : imports[name] ?? require(name),
     document: { createElement: () => ({ getContext: () => context }) },
+    matchMedia: () => ({ matches: reducedMotion }),
   });
   return sandboxModule.exports;
 }
 const props = compile('../src/components/props.tsx');
 const portraitTexture = new THREE.Texture();
-const workshop = compile('../src/components/Workshop.tsx', '\nexport { Bench, Wall, DeskLight, WallFrame };', {
+const workshop = compile('../src/components/Workshop.tsx', '\nexport { Bench, Wall, CeilingLed, WallFrame, LED };', {
   './props': props,
   './LayoutEditor': { Editable3D: p => p.children },
   '@react-three/drei': { RoundedBox: 'roundedBox', Text: () => null, useTexture: () => portraitTexture },
@@ -86,15 +88,15 @@ assert.equal(laptopRoom.getObjectByName('right-figure-cabinet').position.y, -0.5
 const workshopSource = readFileSync(new URL('../src/components/Workshop.tsx', import.meta.url), 'utf8');
 assert(!workshopSource.includes('SHIP IT') && !workshopSource.includes('while (alive)'), 'Remove both wall slogans');
 assert(workshopSource.includes('<WallFrame at={[-2.05, 1.4, -4.69]} />'), 'Lower the portrait without changing its crop or size');
-const ledElement = workshop.DeskLight();
-const led = scene(ledElement);
-const diffuser = led.getObjectByName('led-diffuser');
-assert.equal(diffuser.geometry.parameters.width, diffuser.geometry.parameters.height, 'Task light must be a square LED');
-const area = ledElement.props.children[1].props.children.find(child => child.type === 'rectAreaLight');
-assert(area && area.props.width === area.props.height && area.props.intensity > 0, 'LED must actually illuminate the desk, not just glow');
+// Ceiling LED: four thin strips forming a rectangle ~70-80% of the room interior (15.4 x 10, walls top out at y=4.6), no hanging fixture.
+const led = scene(workshop.CeilingLed());
+const strips = []; led.traverse(n => n.name === 'led-strip' && strips.push(n));
+assert.equal(strips.length, 4, 'Ceiling LED is four strips');
 led.updateMatrixWorld(true);
-const direction = new THREE.Vector3(0, 0, 1).transformDirection(diffuser.matrixWorld);
-assert(direction.y < -0.8 && direction.z > 0, 'Diffuser must aim down onto the table and toward the chair');
+const ledBox = new THREE.Box3().setFromObject(led).getSize(new THREE.Vector3());
+assert(ledBox.x / 15.4 >= 0.7 && ledBox.x / 15.4 <= 0.8 && ledBox.z / 10 >= 0.7 && ledBox.z / 10 <= 0.8, 'LED outline must be 70-80% of the floor');
+assert(ledBox.y < 0.1 && workshop.LED.y > 4.4 && workshop.LED.y <= 4.6, 'LED is a flat line stuck to the ceiling');
+assert(!workshopSource.includes('DeskLight'), 'The hanging lamp is gone');
 const portrait = scene(workshop.WallFrame({ at: [-2.05, 1.4, -4.69] }));
 let crop;
 portrait.traverse(node => { if (node.userData.material?.map) crop = node.userData.material.map; });
@@ -123,16 +125,26 @@ for (const x of [bounds.min.x, bounds.max.x]) for (const z of [bounds.min.z, bou
 const settings = compile('../src/data/layout.ts');
 const sections = compile('../src/data/sections.ts');
 const doc = compile('../src/data/doc.ts', '', { './portfolio': {} });
-const panels = compile('../src/components/HtmlPanel.tsx', '\nexport { focusPose };', {
-  '@react-three/fiber': {}, '@/lib/quad': {}, '@/data/doc': doc, '@/data/sections': sections,
-  '@/data/layout': settings, './PanelShell': {}, './Hud': {}, './Sections': {},
-  './LayoutEditor': {},
+const panelFrames = [];
+let panelEditing = false;
+const panels = compile('../src/components/HtmlPanel.tsx', '\nexport { focusPose, HoloPanel };', {
+  '@react-three/fiber': { useFrame: fn => panelFrames.push(fn) }, '@/lib/quad': compile('../src/lib/quad.ts'), '@/data/doc': doc, '@/data/sections': sections,
+  '@/data/layout': settings, './PanelShell': {}, './Hud': {}, './ResumeMonitor': {},
+  './LayoutEditor': {
+    useLayout: () => ({ layout, editing: panelEditing }),
+    Editable3D: p => {
+      const t = layout[p.id] ?? settings.identity;
+      return { type: 'group', props: { position: p.position, children: {
+        type: 'group', props: { position: t.position, scale: t.scale, 'rotation-y': t.rotation ?? 0, children: p.children },
+      } } };
+    },
+  },
 });
 for (const eye of [[0, 4.8, 10.8], [3, 5, 9], [-3, 4.5, 8]]) {
-  const pose = panels.focusPose(1440 / 960, doc.PANEL.w, doc.PANEL.h, eye);
+  const pose = panels.focusPose(1440 / 960, doc.RESUME_PANEL.w, doc.RESUME_PANEL.h, eye);
   camera.position.fromArray(eye); camera.lookAt(new THREE.Vector3(...cam.at)); camera.updateMatrixWorld();
   const rotation = new THREE.Euler(pose.monitor.lean, pose.monitor.yaw, pose.monitor.roll);
-  const size = [1.8, doc.PANEL.h * 1.8 / doc.PANEL.w];
+  const size = [doc.RESUME_PANEL.w * 1.8 / doc.PANEL.w, doc.RESUME_PANEL.h * 1.8 / doc.PANEL.w];
   const corners = [];
   for (const sx of [-1, 1]) for (const sy of [-1, 1]) {
     corners.push(new THREE.Vector3(sx * size[0] / 2, sy * size[1] / 2, 0).applyEuler(rotation)
@@ -140,17 +152,128 @@ for (const eye of [[0, 4.8, 10.8], [3, 5, 9], [-3, 4.5, 8]]) {
   }
   assert(Math.abs(corners[0].x - corners[1].x) < 1e-6, 'Monitor must have vertical edges at any camera angle');
   assert(Math.abs(corners[0].y - corners[2].y) < 1e-6, 'Monitor must have horizontal edges at any camera angle');
-  assert(Math.abs(corners[3].x - 0.94) < 1e-6, 'Monitor must keep its right-hand screen placement');
+  assert(Math.abs(corners[0].x + corners[3].x) < 1e-6, 'Reading monitor must be centered');
+  assert(corners.every(c => Math.abs(c.x) <= 0.92 && Math.abs(c.y) <= 0.82 + 1e-6), 'Reading monitor stays within the HUD');
   for (const pad of pose.pads) assert(Math.abs(pad[1]) < 1e-6, 'Section pads must still rest on the desk plane');
 }
+// The real viewport-aware flight lands at one CSS pixel per source pixel, not an oversized fit-to-HUD scale.
+const nativePose = panels.focusPose(1440 / 960, doc.RESUME_PANEL.w, doc.RESUME_PANEL.h, camera.position.toArray(), 960);
+const nativeRotation = new THREE.Euler(nativePose.monitor.lean, nativePose.monitor.yaw, nativePose.monitor.roll);
+const nativeCorners = [-1, 1].map(s => new THREE.Vector3(s * doc.RESUME_PANEL.w * 1.8 / doc.PANEL.w / 2, s * doc.RESUME_PANEL.h * 1.8 / doc.PANEL.w / 2, 0)
+  .applyEuler(nativeRotation).add(new THREE.Vector3(...nativePose.monitor.pos)).project(camera));
+assert(Math.abs((nativeCorners[1].x - nativeCorners[0].x) * 1440 / 2 - doc.RESUME_PANEL.w) < 1e-6, 'Flight endpoint width matches the flat reading box');
+assert(Math.abs((nativeCorners[1].y - nativeCorners[0].y) * 960 / 2 - doc.RESUME_PANEL.h) < 1e-6, 'Flight endpoint height matches the flat reading box');
+// The actual reading group cancels the saved wrapper yaw, not just the default focus pose.
+camera.position.fromArray(layout['camera-section'].position);
+camera.lookAt(new THREE.Vector3(...cam.at)); camera.updateMatrixWorld();
+const readingPose = panels.focusPose(camera.aspect, doc.RESUME_PANEL.w, doc.RESUME_PANEL.h, camera.position.toArray());
+const readingPanel = panels.HoloPanel({
+  p: palette, position: [2, 1, -1], yaw: -0.4, lean: -0.4, open: true,
+  focus: readingPose.monitor, faceRef: { current: null }, documentSize: [doc.RESUME_PANEL.w, doc.RESUME_PANEL.h],
+});
+const readingRoot = scene(readingPanel);
+for (const fn of panelFrames) fn({ camera, size: { width: 1440, height: 960 } }, 10);
+readingRoot.updateMatrixWorld(true);
+const readingGroup = readingPanel.props.children.props.ref.current;
+assert(readingGroup.getWorldQuaternion(new THREE.Quaternion()).angleTo(camera.quaternion) < 1e-6,
+  'Reading projection is flat to the viewer even with a saved monitor yaw');
+// The profile keeps its zoom flight while the flat résumé layer cross-fades in from mid-flight, then takes over exactly once.
+let reveals = 0;
+const fakeStyle = (o = {}) => Object.defineProperty(o, 'setProperty', { value(n, v) { this[n] = v; }, enumerable: false });
+const layer = { style: fakeStyle(), classList: { contains: c => c === 'resume-layer' }, querySelector: () => ({ focus: () => reveals++ }) };
+const faceRef = { current: { style: fakeStyle(), dataset: { reading: 'true' }, nextElementSibling: layer } };
+panelFrames.length = 0;
+scene(panels.HoloPanel({
+  p: palette, position: [2, 1, -1], yaw: -0.4, lean: -0.4, open: true,
+  focus: readingPose.monitor, faceRef, documentSize: [doc.RESUME_PANEL.w, doc.RESUME_PANEL.h],
+}));
+const flight = [], fade = [];
+for (let frame = 0; frame < 240; frame++) {
+  for (const fn of panelFrames) fn({ camera, size: { width: 1440, height: 960 } }, 1 / 60);
+  flight.push(faceRef.current.style.transform);
+  fade.push(Number(layer.style.opacity));
+}
+assert(flight[0].startsWith('matrix3d('), 'First frame must still fly from the home monitor');
+assert.notEqual(flight[0], flight[1], 'Flight must animate over multiple frames');
+assert(fade[0] === 0 && fade[30] === 0 && fade.at(-1) === 1, 'The profile flies alone first; the r\u00e9sum\u00e9 swaps in at the landing');
+assert(fade.every((o, i) => !i || o >= fade[i - 1]), 'R\u00e9sum\u00e9 fade is monotonic');
+const handoff = fade.findIndex(o => o >= 0.99);
+assert(handoff >= 45 && handoff <= 1 * 60 + 2, 'R\u00e9sum\u00e9 is solid exactly when the 1s flight ends: no tail, no early pop');
+assert(Number(faceRef.current.style['--profile-fade']) === 0 && faceRef.current.style.visibility === 'hidden', 'Profile is gone once the r\u00e9sum\u00e9 is solid');
+assert.equal(faceRef.current.dataset.settled, 'true');
+assert.equal(reveals, 1, 'One handoff, not repeated icon reveals');
+const settledStyle = JSON.stringify(faceRef.current.style);
+for (const active of ['experience', 'projects', 'contact']) {
+  const face = panels.MonitorFace({ ref: faceRef, active, onCloseAction() {} });
+  assert.equal(face.props.children[0].props.ref, faceRef, 'Chapter changes keep the same face node');
+  for (let frame = 0; frame < 60; frame++) {
+    for (const fn of panelFrames) fn({ camera, size: { width: 1440, height: 960 } }, 1 / 60);
+    assert.equal(JSON.stringify(faceRef.current.style), settledStyle, 'Chapter changes never restart the flight');
+  }
+}
+// Closing and layout editing still use remote main's existing projective renderer.
+for (const [open, editing] of [[false, false], [true, true]]) {
+  panelEditing = editing;
+  delete faceRef.current.dataset.reading;
+  faceRef.current.style = fakeStyle({ ...panels.MonitorFace({ ref: faceRef, active: open ? 'projects' : null, onCloseAction() {} }).props.children[0].props.style });
+  panelFrames.length = 0;
+  scene(panels.HoloPanel({
+    p: palette, position: [2, 1, -1], yaw: -0.4, lean: -0.4, open,
+    focus: readingPose.monitor, faceRef, documentSize: [doc.RESUME_PANEL.w, doc.RESUME_PANEL.h],
+  }));
+  for (const fn of panelFrames) fn({ camera, size: { width: 1440, height: 960 } }, 1 / 60);
+  assert(faceRef.current.style.transform.startsWith('matrix3d('), 'Home/editor must not retain the flat reading transform');
+}
+panelEditing = false;
+faceRef.current.dataset.reading = 'true';
+faceRef.current.dataset.settled = 'true';
+faceRef.current.style = fakeStyle(JSON.parse(settledStyle));
+const staleFrameStyle = JSON.stringify(faceRef.current.style);
+for (const fn of panelFrames) fn({ camera, size: { width: 1440, height: 960 } }, 1 / 60);
+assert.equal(JSON.stringify(faceRef.current.style), staleFrameStyle, 'A stale Canvas callback cannot overwrite the new reading DOM');
+// Reduced motion skips the flight and reveals the stable reading view immediately.
+reducedMotion = true;
+delete faceRef.current.dataset.settled;
+panelFrames.length = 0;
+scene(panels.HoloPanel({
+  p: palette, position: [2, 1, -1], yaw: -0.4, lean: -0.4, open: true,
+  focus: readingPose.monitor, faceRef, documentSize: [doc.RESUME_PANEL.w, doc.RESUME_PANEL.h],
+}));
+for (const fn of panelFrames) fn({ camera, size: { width: 1440, height: 960 } }, 1 / 60);
+assert.equal(layer.style.opacity, '1');
+assert.equal(faceRef.current.dataset.settled, 'true');
+reducedMotion = false;
+// The same résumé document stays mounted; navigation only scrolls its own content element.
+const content = compile('../src/data/portfolio.ts');
+const ResumeMonitor = compile('../src/components/ResumeMonitor.tsx', '', {
+  '@/data/portfolio': content, './Sections': { SectionBody: () => null },
+  './LayoutEditor': { useFlatLayout: () => ({ style: {}, handle: null }) },
+}).default;
+const resume = ResumeMonitor({ active: 'projects', onCloseAction() {} });
+const workspace = resume.props.children.find(c => c?.props?.className === 'resume-workspace');
+const [navigation, readingDocument] = workspace.props.children;
+assert.equal(readingDocument.props.className, 'resume-document', 'Navigation and document are separate projections');
+const scrollport = readingDocument.props.children.find(c => c?.props?.className === 'resume-scroll');
+const links = navigation.props.children.flat().filter(c => c.props.href.startsWith('#resume-'));
+assert.equal(links.length, sections.sections.length + 2, 'Navigation includes every section, About and Education');
+assert.equal(scrollport.props.children.length, links.length, 'All résumé chapters render in one scrollport');
+const requests = [];
+scrollport.props.ref.current = { scrollTo: options => requests.push(options) };
+scrollport.props.children.forEach((c, i) => c.props.ref({ offsetTop: i * 200 }));
+links.find(c => c.props.href === '#resume-projects').props.onClick({ preventDefault() {} });
+assert.equal(requests[0].top, 772, 'Projects link scrolls inside the monitor to its chapter');
+assert.equal(requests[0].behavior, 'smooth', 'Chapter navigation scrolls smoothly');
+scrollport.props.ref.current = null; // effects run later with no mounted scrollport
 // Raycast the real Slot targets at both proposed elevations, home and section views.
 const frames = [];
 let pose, rail;
 // Custom pad offsets are calibrated for their saved camera, not every hypothetical test angle.
 const defaultRail = Object.fromEntries(Object.entries(layout).filter(([id]) => !id.startsWith('pad-')));
-const slots = compile('../src/components/Scene.tsx', '\nexport { Slot, Emitter };', {
-  '@react-three/fiber': { useFrame: fn => frames.push(fn) },
+const introSettings = compile('../src/data/intro.ts', '', { './portfolio': {} });
+const slots = compile('../src/components/Scene.tsx', '\nexport { Slot, Rig, Speech };', {
+  '@react-three/fiber': { useFrame: fn => frames.push(fn), useThree: select => select({ camera }) },
   '@react-three/drei': { useGLTF: { preload() {} }, Text: () => null },
+  '@/data/intro': introSettings,
   '@react-three/postprocessing': {}, '@/lib/timer': { timer: { getElapsed: () => 0 } },
   '@/data/layout': settings, '@/data/sections': sections, './Hologram': { default: () => null },
   './HtmlPanel': { useFocusPose: () => pose }, './Workshop': {},
@@ -164,13 +287,43 @@ const slots = compile('../src/components/Scene.tsx', '\nexport { Slot, Emitter }
     },
   },
 });
-const emitter = scene(slots.Emitter({ p: palette, lit: true }));
-let rings = 0;
-emitter.traverse(node => {
-  if (node.geometry?.type === 'RingGeometry') rings++;
-  assert.notEqual(node.userData.material?.color, palette.primary, 'Emitter must not retain the red outer ring');
-});
-assert.equal(rings, 1, 'Keep only the accent ring');
+const sceneSource = readFileSync(new URL('../src/components/Scene.tsx', import.meta.url), 'utf8');
+assert(!sceneSource.includes('ringGeometry') && !sceneSource.includes('circleGeometry') && !sceneSource.includes('function Emitter'), 'No circular emitter lighting under text or section holograms');
+// Speech stays at the pad center and rises vertically, without camera-facing orientation.
+for (const height of Object.values(introSettings.SPEECH_HEIGHTS)) {
+  frames.length = 0;
+  const speech = slots.Speech({ text: 'Welcome', p: palette, instant: false, height });
+  const lift = speech.props.children;
+  lift.props.ref.current = new THREE.Group();
+  lift.props.ref.current.position.y = lift.props['position-y'];
+  for (const fn of frames) fn({}, 10);
+  assert.deepEqual(Array.from(speech.props.position), [0, 0.025, 0], 'Project from the center of the pad');
+  assert(Math.abs(lift.props.ref.current.position.y - height) < 1e-6, 'Speech uses its configured height');
+  assert.equal(lift.props.ref.current.rotation.x, 0, 'Speech stays upright in world space');
+}
+// Intro changes only elevation; the module screen restores Home and section cameras stay saved.
+for (const [intro, active, degrees] of [[true, null, 21], [false, null, 30], [false, 'projects', null]]) {
+  frames.length = 0;
+  slots.Rig({ intro, active, focus: !!active });
+  for (const fn of frames) fn({ camera, pointer: { x: 0, y: 0 }, size: { width: 1440, height: 960 } }, 10);
+  const saved = layout[active ? 'camera-section' : 'camera-home'].position;
+  const distance = Math.hypot(camera.position.x, camera.position.y - cam.at[1], camera.position.z);
+  assert(Math.abs(distance - Math.hypot(saved[0], saved[1] - cam.at[1], saved[2])) < 1e-6, 'Keep saved camera distance');
+  if (degrees !== null) assert(Math.abs(THREE.MathUtils.radToDeg(Math.asin((camera.position.y - cam.at[1]) / distance)) - degrees) < 1e-5, 'Intro starts at 21 degrees, modules at 30');
+  else saved.forEach((v, i) => assert(Math.abs(camera.position.toArray()[i] - v) < 1e-6, 'Section camera is unchanged'));
+}
+// Extreme mouse positions barely move the desk camera and never tilt the reading view.
+for (const active of [null, 'projects']) {
+  frames.length = 0;
+  slots.Rig({ intro: false, active, focus: !!active });
+  const saved = new THREE.Vector3().fromArray(layout[active ? 'camera-section' : 'camera-home'].position);
+  for (const pointer of [-1, 1]) {
+    for (const fn of frames) fn({ camera, pointer: { x: pointer, y: pointer }, size: { width: 1440, height: 960 } }, 10);
+    const offset = camera.position.clone().sub(saved);
+    assert(Math.abs(offset.x) <= 0.003501 && Math.abs(offset.y) <= 0.001201, 'Mouse movement is reduced by at least 99%');
+    if (active) assert(offset.length() < 1e-6, 'Reading camera ignores mouse movement');
+  }
+}
 const radius = 9;
 for (const [width, height] of [[1440, 960], [1440, 806], [1024, 768], [768, 1024]]) {
   camera.aspect = width / height; camera.updateProjectionMatrix();
@@ -180,7 +333,7 @@ for (const [width, height] of [[1440, 960], [1440, 806], [1024, 768], [768, 1024
     camera.position.fromArray(eye); camera.lookAt(new THREE.Vector3(...cam.at)); camera.updateMatrixWorld();
     pose = panels.focusPose(camera.aspect, doc.PANEL.w, doc.PANEL.h, eye);
     frames.length = 0;
-    const roots = ids.map((_, i) => scene(slots.Slot({ i, p: palette, active: null, onSelect() {}, motion: 0, focus: rail })));
+    const roots = ids.map((_, i) => scene(slots.Slot({ i, p: palette, active: null, onSelect() {}, motion: 0, focus: rail, show: true })));
     for (const fn of frames) fn({ camera }, 10);
     roots.forEach(root => root.updateMatrixWorld(true));
     for (const [i, root] of roots.entries()) {
@@ -215,4 +368,4 @@ for (const root of [bench, room, laptopRoom, led, portrait]) root.traverse(node 
 });
 for (const effect of effects) effect()?.();
 assert(disposed >= 4, 'Procedural scene textures must release their GPU resources');
-console.log('PASS: laptop-only shelf lowering, portrait/copy changes, accent-only emitter ring, camera-facing labels, raycast targets, monitor fit and texture cleanup');
+console.log('PASS: laptop-only shelf lowering, portrait/copy changes, no circular emitters, camera-facing labels, raycast targets, monitor fit and texture cleanup');
