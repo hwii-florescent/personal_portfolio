@@ -1,13 +1,13 @@
 export const portfolio = {
   "name": "Huy Hoang",
-  "bio": "Software engineer building reliable systems and agentic tools across Go, Python, cloud infrastructure, and applied ML. At Uber, I work on experimentation platforms, zero-downtime migrations, MCP integrations, and LLM-assisted review workflows.",
-  "bio2": "Outside of work I mentor peers, lead engineering teams, and learn by building. I am especially interested in developer tools, production ML systems, and practical AI that makes complex workflows easier to understand.",
+  "bio": "3x Internships & 2x Hackathon Winner. Specialized in AI/ML, Forward Deployed, Cloud Infrastructure, Backend Systems using Go, Python, C++, pytorch, tensorflow. Previous @ Uber Technologies Inc.",
+  "bio2": "Outside of work, I am the TA for some core CS courses like Data Structures, Advanced Algorithms, Databases, Digital Logic. I also lead project teams at school, and actively learning about agentic AI. I am especially interested in developer tools, production ML systems, and practical AI that makes complex workflows easier to understand.",
   "roles": [
+    "2x Hackathon Winner",
     "Software Engineer",
-    "Hackathon Winner",
-    "AI Systems Builder",
+    "AI/ML Engineer",
     "Cloud Infrastructure",
-    "ML Researcher"
+    "Forward Deployed Engineer"
   ],
   "education": {
     "school": "University of Florida",
@@ -166,6 +166,21 @@ export const portfolio = {
   ],
   "projects": [
     {
+      "name": "transPEAKtation",
+      "award": "🏆 1st Place — Best Use of TigerData, 🏆 2nd Place — Best Use of AWS",
+      "desc": "ML traffic prediction and traffic routing algorithms. Performed 50% better than Google Maps",
+      "tech": [
+        "Tensorflow",
+        "Pytorch",
+        "AWS + Digital Ocean",
+        "MongoDB + TigerData",
+        "SwiftUI",
+        "Transformer Model"
+      ],
+      "github": "https://github.com/No-Way-Mo/transpeaktation",
+      "demo": null
+    },
+    {
       "name": "Horus’ Eyes AI Platform",
       "award": "🏆 1st Place — Best Use of Terraform (SwampHacks)",
       "desc": "AI assistive platform for visually impaired users, with automated cloud infrastructure and a low-latency real-time inference pipeline.",
@@ -255,8 +270,8 @@ export const portfolio = {
       "org": "SASE Engineering Team",
       "dates": "Sep 2023 – Apr 2024",
       "bullets": [
-        "Led fine-tuning on custom audio datasets to improve scream detection accuracy",
-        "Built Python audio source localizer via multi-mic time-of-arrival analysis"
+        "Led a software team to fine-tune and train audio model on custom datasets, improving scream audio detection accuracy",
+        "Developed a Python program to localize audio sources by comparing arrival times across multiple microphones"
       ]
     }
   ]
@@ -267,8 +282,8 @@ export const avatarUrl = "/avatar.jpeg";
 
 /** Headline numbers for the HUD overview. Keep in sync with the bullets above. */
 export const stats = [
-  { value: "120k+", label: "Experiments migrated" },
-  { value: "99.8%", label: "Backfill completion" },
+  { value: "2X", label: "Hackathon Winner" },
+  { value: "3X", label: "Internships" },
   { value: "94%", label: "LLM review precision" },
   { value: "3.9", label: "GPA / 4.0" },
 ] as const;
