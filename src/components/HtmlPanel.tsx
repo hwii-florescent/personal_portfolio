@@ -11,7 +11,7 @@ import { Euler, Matrix4, MathUtils, Quaternion, Vector3, type Group, type Mesh }
 import { quadToCss } from "@/lib/quad";
 import { PANEL, RESUME_PANEL } from "@/data/doc";
 import type { Palette } from "@/data/themes";
-import { sections, type SectionId } from "@/data/sections";
+import { sections, type ChapterId } from "@/data/sections";
 import PanelShell from "./PanelShell";
 import { ProfileBody } from "./Hud";
 import ResumeMonitor from "./ResumeMonitor";
@@ -20,7 +20,7 @@ import { CAM, identity, type Transform } from "@/data/layout";
 
 const WORLD_W = 1.8; // a PANEL.w-wide panel is this wide in world units
 const K = WORLD_W / PANEL.w; // world units per CSS px (shared by every panel so text sizes match)
-const FLIGHT = 1; // seconds for the monitor to travel between the home and reading poses (either direction)
+export const FLIGHT = 1; // seconds for the monitor to travel between the home and reading poses (either direction)
 const DEPTH = 0.015; // slab thickness (world units): thin glass, not a monitor
 const FRAME = 0.01; // bezel bar width
 const UP = new Vector3(0, 1, 0);
@@ -215,7 +215,7 @@ function HoloPanel({ p, scale = 1, position, yaw, lean = 0, focus, open, faceRef
 }
 
 /** In the canvas: the monitor's frame. It also places `faceRef` (MonitorFace, rendered next to the canvas) every frame. */
-export default function Monitor({ p, active, faceRef }: { p: Palette; active: SectionId | null; faceRef: RefObject<HTMLDivElement | null> }) {
+export default function Monitor({ p, active, faceRef }: { p: Palette; active: ChapterId | null; faceRef: RefObject<HTMLDivElement | null> }) {
   const aspect = useThree((s) => s.size.width / s.size.height);
   const pose = useFocusPose();
   return <HoloPanel p={p} scale={homeScale(aspect)} lean={HOME.lean} yaw={HOME.yaw} position={homePos(aspect)} focus={pose.monitor} open={active !== null} faceRef={faceRef} documentSize={[pose.width, pose.height]} />;
@@ -223,7 +223,7 @@ export default function Monitor({ p, active, faceRef }: { p: Palette; active: Se
 
 /** Outside the canvas (a sibling over it): the monitor's DOM. Hidden until Monitor has placed it. Not inside R3F's event root, so
  *  pointer events on it never raycast through to the pads behind. */
-export function MonitorFace({ ref, active, onCloseAction }: { ref: Ref<HTMLDivElement>; active: SectionId | null; onCloseAction: () => void }) {
+export function MonitorFace({ ref, active, onCloseAction }: { ref: Ref<HTMLDivElement>; active: ChapterId | null; onCloseAction: () => void }) {
   const editor = useLayout();
   const editing = !!editor?.editing;
   const reading = active !== null && !editing;

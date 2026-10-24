@@ -15,6 +15,21 @@
 
 html, body { background: #020004; color: var(--color-fg); font-family: var(--font-inter), sans-serif; }
 
+/* Karen changes projected light, never the shared geometry, typography or component positions. */
+[data-theme="spidey"] { --color-fg: #fff0f4; --color-muted: #e2b5c6; }
+[data-theme="spidey"] .holo-panel,
+[data-theme="spidey"] .resume-document {
+  background: linear-gradient(135deg, rgb(255 92 118 / 0.11), transparent 48%, rgb(120 189 255 / 0.1)), rgb(6 11 24 / 0.58);
+}
+[data-theme="spidey"] .holo-panel { --rail: linear-gradient(180deg, transparent, #78bdff 12%, var(--accent) 50%, #78bdff 88%, transparent); }
+[data-theme="spidey"] .resume-monitor { --color-fg: #fff0f4; --color-muted: #ead0dc; --color-accent: #ff9fb0; }
+[data-theme="spidey"] .resume-nav a { color: #9ed2ff; }
+[data-theme="spidey"] .resume-nav a:hover,
+[data-theme="spidey"] .resume-nav a[aria-current] { color: var(--gold); }
+[data-theme="spidey"] .resume-document::before,
+[data-theme="spidey"] .resume-document::after { border-color: var(--accent); }
+[data-theme="spidey"] ::selection { background: #8a2447; color: #fff0f4; }
+
 .scanlines {
   background: repeating-linear-gradient(to bottom, transparent 0 2px, rgb(0 0 0 / 0.18) 2px 3px);
 }

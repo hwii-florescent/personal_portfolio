@@ -8,6 +8,7 @@ export const sections = [
 ] as const;
 
 export type SectionId = (typeof sections)[number]["id"];
+export type ChapterId = SectionId | "about" | "education";
 
 type Voice = Record<SectionId | "idle", string[]>;
 

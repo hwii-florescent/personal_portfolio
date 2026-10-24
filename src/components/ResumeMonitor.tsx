@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { portfolio as p, resumeUrl, stats } from "@/data/portfolio";
-import type { SectionId } from "@/data/sections";
+import type { ChapterId } from "@/data/sections";
 import type { LayoutId } from "@/data/layout";
 import { SectionBody } from "./Sections";
 import { useFlatLayout } from "./LayoutEditor";
@@ -16,11 +16,10 @@ const chapters = [
   { id: "leadership", label: "Leadership", icon: "m12 3 3 6 6 1-4.5 4.5 1 6.5-5.5-3-5.5 3 1-6.5L3 10l6-1z" },
   { id: "contact", label: "Contact", icon: "M3 5h18v14H3zM3 5l9 8 9-8" },
 ] as const;
-type ChapterId = (typeof chapters)[number]["id"];
 
 /** One document, one native scroll container. Navigation never replaces the résumé or scrolls the page behind it. */
 export default function ResumeMonitor({ active, onCloseAction, className = "", layoutId }: {
-  active: SectionId; onCloseAction: () => void; className?: string; layoutId?: LayoutId;
+  active: ChapterId; onCloseAction: () => void; className?: string; layoutId?: LayoutId;
 }) {
   const root = useRef<HTMLElement>(null);
   const scroll = useRef<HTMLDivElement>(null);
@@ -38,11 +37,12 @@ export default function ResumeMonitor({ active, onCloseAction, className = "", l
   useEffect(() => { root.current?.focus({ preventScroll: true }); }, []);
   useEffect(() => {
     reading.current = false;
-    jump(active);
+    if (active === "about") scroll.current?.scrollTo({ top: 0, behavior: "instant" });
+    else jump(active);
     const el = scroll.current;
     if (!el) return;
     // The monitor resizes during its flight; re-anchor the requested chapter until the visitor takes over scrolling.
-    const observer = new ResizeObserver(() => { if (!reading.current) jump(active); });
+    const observer = new ResizeObserver(() => { if (!reading.current) { if (active === "about") el.scrollTop = 0; else jump(active); } });
     observer.observe(el);
     return () => observer.disconnect();
   }, [active, jump]);

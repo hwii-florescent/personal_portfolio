@@ -96,7 +96,7 @@ export default function Hologram({
     m.uniforms.uTime.value = motion ? timer.getElapsed() : 0;
     m.uniforms.uOpacity.value = op.current;
     m.uniforms.uColor.value.set(p.accent);
-    e.color.set(p.accent);
+    e.color.set(p.ai === "K.A.R.E.N." ? p.gold : p.accent);
     e.opacity = Math.min(1, 0.9 * op.current);
   });
 

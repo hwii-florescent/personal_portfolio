@@ -6,7 +6,7 @@ import { Bloom, EffectComposer } from "@react-three/postprocessing";
 import { MathUtils, Vector3, type Group, type Mesh, type Points, type ShaderMaterial } from "three";
 import { timer, TimerTick } from "@/lib/timer";
 import { Suspense, useEffect, useRef, useState, type RefObject } from "react";
-import { sections, type SectionId } from "@/data/sections";
+import { sections, type ChapterId } from "@/data/sections";
 import type { Palette } from "@/data/themes";
 import Hologram from "./Hologram";
 import Monitor, { useFocusPose } from "./HtmlPanel";
@@ -35,7 +35,7 @@ const slot = (i: number): [number, number, number] => {
 };
 
 function Slot({ i, p, active, onSelect, motion, focus, show }: {
-  i: number; p: Palette; active: SectionId | null; onSelect: (id: SectionId | null) => void; motion: number; focus: boolean; show: boolean;
+  i: number; p: Palette; active: ChapterId | null; onSelect: (id: ChapterId | null) => void; motion: number; focus: boolean; show: boolean;
 }) {
   const ap = useRef(show ? 1 : 0); // appear factor: the intro holds the holograms back, then they grow in
   const s = sections[i];
@@ -68,7 +68,7 @@ function Slot({ i, p, active, onSelect, motion, focus, show }: {
     const grp = g.current;
     const h = holo.current;
     if (!grp || !h) return;
-    f.current = MathUtils.damp(f.current, rail ? 1 : 0, 3.5, dt);
+    f.current = motion ? MathUtils.damp(f.current, rail ? 1 : 0, 3.5, dt) : Number(rail);
     const k = f.current;
     const L = MathUtils.lerp;
     // World pose = blend of the home layout and the section-view layout; then solve for the local pose inside the wrapper (offset, yaw, scale).
@@ -171,7 +171,7 @@ function SpeechLine({ text, p, instant }: { text: string; p: Palette; instant: b
   );
 }
 
-function Rig({ active, focus, intro }: { active: SectionId | null; focus: boolean; intro: boolean }) {
+function Rig({ active, focus, intro, motion }: { active: ChapterId | null; focus: boolean; intro: boolean; motion: number }) {
   const editor = useLayout();
   const camera = useThree((s) => s.camera);
   const id = active ? "camera-section" : "camera-home";
@@ -206,9 +206,10 @@ function Rig({ active, focus, intro }: { active: SectionId | null; focus: boolea
     const parallax = active || editor?.editing ? 0 : 0.01; // Barely perceptible at the desk; no mouse tilt while reading.
     // Opening: settle just ahead of the monitor's fixed-length flight (HtmlPanel FLIGHT) so the profile lands on the résumé's box.
     const rate = active ? 4.5 : 2.5;
-    camera.position.x = MathUtils.damp(camera.position.x, position[0] * zoom + pointer.x * 0.35 * parallax, rate, dt);
-    camera.position.y = MathUtils.damp(camera.position.y, CAM.at[1] + (position[1] - CAM.at[1]) * zoom - (flat ? 0.3 : 0) + pointer.y * 0.12 * parallax, rate, dt);
-    camera.position.z = MathUtils.damp(camera.position.z, position[2] * zoom - (flat ? 0.4 : 0), rate, dt);
+    const blend = motion ? 1 - Math.exp(-rate * dt) : 1;
+    camera.position.x = MathUtils.lerp(camera.position.x, position[0] * zoom + pointer.x * 0.35 * parallax, blend);
+    camera.position.y = MathUtils.lerp(camera.position.y, CAM.at[1] + (position[1] - CAM.at[1]) * zoom - (flat ? 0.3 : 0) + pointer.y * 0.12 * parallax, blend);
+    camera.position.z = MathUtils.lerp(camera.position.z, position[2] * zoom - (flat ? 0.4 : 0), blend);
     camera.lookAt(flat ? -0.6 : CAM.at[0], CAM.at[1], CAM.at[2]);
   }, -2); // before the controls and the monitor's DOM projection
 
@@ -231,7 +232,7 @@ function Ready({ onReady }: { onReady: () => void }) {
 }
 
 export default function Scene({ p, active, onSelectAction, motion, panel3d, faceRef, onReadyAction, speech, holograms }: {
-  p: Palette; active: SectionId | null; onSelectAction: (id: SectionId | null) => void; motion: number; panel3d?: boolean;
+  p: Palette; active: ChapterId | null; onSelectAction: (id: ChapterId | null) => void; motion: number; panel3d?: boolean;
   faceRef: RefObject<HTMLDivElement | null>; onReadyAction: () => void;
   speech: string | null; holograms: boolean; // intro: what the AI says now, and whether the holograms may appear yet
 }) {
@@ -240,7 +241,7 @@ export default function Scene({ p, active, onSelectAction, motion, panel3d, face
   const [low, setLow] = useState(false);
   const focus = !!panel3d && active !== null; // md+: camera pushes in on the monitor and the section objects line up beside it
   return (
-    <Canvas shadows="percentage" camera={{ position: [...CAM.pos], fov: 48 }} dpr={low ? 1 : [1, 2]} gl={{ antialias: true }} aria-hidden="true">
+    <Canvas style={{ touchAction: "pan-y pinch-zoom" }} shadows="percentage" camera={{ position: [...CAM.pos], fov: 48 }} dpr={low ? 1 : [1, 2]} gl={{ antialias: true }} aria-hidden="true">
       <PerformanceMonitor onDecline={() => setLow(true)} />
       <TimerTick />
       <Ready onReady={onReadyAction} />
@@ -259,7 +260,7 @@ export default function Scene({ p, active, onSelectAction, motion, panel3d, face
       {speech && <Speech text={speech} p={p} instant={motion === 0} height={holograms ? SPEECH_HEIGHTS.modules : SPEECH_HEIGHTS.intro} />}
       <Sparkles ref={clampSparkles} count={70} scale={[12, 3, 6]} position={[0, 1.2, -0.5]} size={2} speed={motion * 0.25} color={p.accent} />
       {panel3d && holograms && <Monitor p={p} active={active} faceRef={faceRef} />}
-      <Rig active={active} focus={focus} intro={!holograms} />
+      <Rig active={active} focus={focus} intro={!holograms} motion={motion} />
       {!low && (
         <EffectComposer>
           <Bloom mipmapBlur intensity={0.7} luminanceThreshold={0.45} luminanceSmoothing={0.3} />

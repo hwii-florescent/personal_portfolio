@@ -4,8 +4,8 @@ import { useEffect } from "react";
 import { LAST, TYPE_MS } from "@/data/intro";
 
 /** Opening controls. The speech itself is a 3D hologram over the table (Speech in Scene.tsx); this keeps the timing, keys and a screen-reader copy. */
-export default function Intro({ step, text, reduced, onNextAction, onDoneAction }: {
-  step: number; text: string; reduced: boolean; onNextAction: () => void; onDoneAction: () => void;
+export default function Intro({ step, text, reduced, onNextAction, onDoneAction, onBeginAction }: {
+  step: number; text: string; reduced: boolean; onNextAction: () => void; onDoneAction: () => void; onBeginAction: () => void;
 }) {
   // Auto-advance after the line has been typed and had time to be read; Next / Enter / Space / → skip ahead.
   useEffect(() => {
@@ -24,11 +24,11 @@ export default function Intro({ step, text, reduced, onNextAction, onDoneAction 
   }, [onNextAction, onDoneAction]);
 
   return (
-    <div role="region" aria-label="Introduction" className="pointer-events-none absolute inset-x-0 bottom-16 z-40 flex justify-center">
+    <div role="region" aria-label="Introduction" className="pointer-events-none absolute inset-x-0 bottom-28 z-40 sm:bottom-16 flex justify-center">
       <span className="sr-only" aria-live="polite">{text}</span>
-      <div className="pointer-events-auto flex gap-5 font-mono text-xs text-accent">
+      <div className="pointer-events-auto flex max-w-[calc(100%-32px)] gap-5 text-center font-mono text-xs text-accent">
         {step < LAST && <button onClick={onNextAction} className="hover:text-gold">[ NEXT ▸ ]</button>}
-        <button onClick={onDoneAction} className="text-muted hover:text-gold">[ {step === LAST ? "EXPLORE ON MY OWN" : "SKIP"} ]</button>
+        <button onClick={step === LAST ? onBeginAction : onDoneAction} className="text-muted hover:text-gold">[ {step === LAST ? "scroll to begin or click on a section you are interested in" : "SKIP"} ]</button>
       </div>
     </div>
   );
