@@ -1,5 +1,7 @@
 export const portfolio = {
   "name": "Huy Hoang",
+  "title": "Software Engineer",
+  "tagline": "I build backend, cloud and applied-ML systems. Most recently search and agent tooling at Uber.",
   "bio": "3x Internships & 2x Hackathon Winner. Specialized in AI/ML, Forward Deployed, Cloud Infrastructure, Backend Systems using Go, Python, C++, pytorch, tensorflow. Previous @ Uber Technologies Inc.",
   "bio2": "Outside of work, I am the TA for some core CS courses like Data Structures, Advanced Algorithms, Databases, Digital Logic. I also lead project teams at school, and actively learning about agentic AI. I am especially interested in developer tools, production ML systems, and practical AI that makes complex workflows easier to understand.",
   "roles": [
@@ -117,6 +119,7 @@ export const portfolio = {
     {
       "role": "Software Engineering Intern",
       "company": "Uber Technologies Inc.",
+      "logo": "/uber.jpg",
       "dates": "May 2026 – July 2026",
       "bullets": [
         "Led search improvements project for an A/B experimentation platform end-to-end, implemented OpenSearch-native sort and filter on Go gRPC endpoints for 120k+ experiments with 27k+ searches/day",
@@ -128,6 +131,7 @@ export const portfolio = {
     {
       "role": "Machine Learning Research Assistant",
       "company": "University of Florida – Agriculture Precision Lab",
+      "logo": "/ufifas_logo.jpeg",
       "dates": "Sep 2024 – Sep 2025",
       "bullets": [
         "Developed GPU-accelerated PyTorch pipelines for dense feature matching, increasing match reliability by 24% in dense foliage and improving multi-view tracking stability",
@@ -138,6 +142,7 @@ export const portfolio = {
     {
       "role": "Software Engineer Intern",
       "company": "FPT Corporation",
+      "logo": "/fpt_corporation_logo-2.jpeg",
       "dates": "May 2025 – Aug 2025",
       "bullets": [
         "Implemented RESTful APIs in Java Spring Boot with WSO2 mediation policies, deployed with AWS EC2, Docker, and monitored via Grafana and Prometheus, achieving 98% request accuracy and improving response time by 20ms",
@@ -148,6 +153,7 @@ export const portfolio = {
     {
       "role": "Site Reliability Engineer Intern",
       "company": "FPT Information System",
+      "logo": "/fptis_logo-2.jpeg",
       "dates": "May 2024 – Aug 2024",
       "bullets": [
         "Automated AWS EKS infrastructure provisioning with Terraform and GitOps, improving deployment efficiency by 30%",
@@ -158,6 +164,7 @@ export const portfolio = {
     {
       "role": "Teaching Assistant",
       "company": "University of Florida (Programming, DSA, Algorithm Abstract, Dlog, Databases)",
+      "logo": "/uf_herbert_wertheim_college_of_engineering_logo.jpeg",
       "dates": "Aug 2024 – Present",
       "bullets": [
         "Led mini-lectures and structured office hours for 50+ students; section grades averaged 15% higher than other section"
@@ -167,7 +174,7 @@ export const portfolio = {
   "projects": [
     {
       "name": "transPEAKtation",
-      "award": "🏆 1st Place — Best Use of TigerData, 🏆 2nd Place — Best Use of AWS",
+      "awards": ["1st Place — Best Use of TigerData", "2nd Place — Best Use of AWS"],
       "desc": "ML traffic prediction and traffic routing algorithms. Performed 50% better than Google Maps",
       "tech": [
         "Tensorflow",
@@ -182,7 +189,7 @@ export const portfolio = {
     },
     {
       "name": "Horus’ Eyes AI Platform",
-      "award": "🏆 1st Place — Best Use of Terraform (SwampHacks)",
+      "awards": ["1st Place — Best Use of Terraform (SwampHacks)"],
       "desc": "AI assistive platform for visually impaired users, with automated cloud infrastructure and a low-latency real-time inference pipeline.",
       "tech": [
         "Terraform",
@@ -197,7 +204,7 @@ export const portfolio = {
     },
     {
       "name": "Context-Aware LLM Application",
-      "award": null,
+      "awards": [],
       "desc": "Generative AI application with optimized state and memory management for accurate multi-turn conversations without latency degradation.",
       "tech": [
         "LangChain",
@@ -211,7 +218,7 @@ export const portfolio = {
     },
     {
       "name": "Crave",
-      "award": null,
+      "awards": [],
       "desc": "Native social food discovery prototype for sharing restaurant visits, dish ratings, and cuisine rankings with ordering, reservations, and ride integrations.",
       "tech": [
         "SwiftUI",
@@ -224,7 +231,7 @@ export const portfolio = {
     },
     {
       "name": "Perch",
-      "award": null,
+      "awards": [],
       "desc": "Personal AI IDE and agent app with a WebSocket server, headless Claude Code runner, terminal manager, and shared web/desktop client architecture.",
       "tech": [
         "TypeScript",
@@ -238,7 +245,7 @@ export const portfolio = {
     },
     {
       "name": "Hower",
-      "award": null,
+      "awards": [],
       "desc": "Time management system that helps users track and manage how they spend their time through a Flask backend and Electron desktop application.",
       "tech": [
         "Python",
@@ -251,7 +258,7 @@ export const portfolio = {
     },
     {
       "name": "Search & Rescue AI",
-      "award": null,
+      "awards": [],
       "desc": "Mobile app with voice-activated incident reporting, GPS tracking, and real-time dispatch coordination.",
       "tech": [
         "React Native",
@@ -268,6 +275,7 @@ export const portfolio = {
     {
       "role": "Software Team Lead",
       "org": "SASE Engineering Team",
+      "logo": "/sase.png",
       "dates": "Sep 2023 – Apr 2024",
       "bullets": [
         "Led a software team to fine-tune and train audio model on custom datasets, improving scream audio detection accuracy",
@@ -278,7 +286,7 @@ export const portfolio = {
 } as const;
 
 export const resumeUrl = "/Huy_Hoang_Resume.pdf";
-export const avatarUrl = "/avatar.jpeg";
+export const portraitUrl = "/images/huy-hoang.jpg";
 
 /** Headline numbers for the HUD overview. Keep in sync with the bullets above. */
 export const stats = [

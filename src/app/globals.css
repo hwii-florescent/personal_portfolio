@@ -1,226 +1,371 @@
 @import "tailwindcss";
 
-/* Colours come from src/data/themes.ts, set as CSS vars on the root wrapper. */
+/*
+  One deliberate look: a film title card over a live room. Ink and bone for reading, ember for anything that matters
+  (it is the colour of the lamps and of the horizon), and hologram blue for the interface itself: brackets and
+  callouts, the same light the projectors in the room throw.
+  Sections: tokens · page · backdrop · header · hero · reading scrim · chapters · contact · scene-only · intro · motion.
+*/
 @theme inline {
-  --color-bg: var(--bg);
-  --color-primary: var(--primary);
-  --color-gold: var(--gold);
-  --color-accent: var(--accent);
-  --color-fg: #e0ffff;
-  --color-muted: #8ec5ce;
-  --font-hud: var(--font-orbitron);
-  --font-mono: var(--font-jetbrains);
-  --font-sans: var(--font-inter);
+  --font-display: var(--font-fraunces);
+  --font-sans: var(--font-geist);
+  --font-mono: var(--font-geist-mono);
 }
 
-html, body { background: #020004; color: var(--color-fg); font-family: var(--font-inter), sans-serif; }
-
-/* Karen changes projected light, never the shared geometry, typography or component positions. */
-[data-theme="spidey"] { --color-fg: #fff0f4; --color-muted: #e2b5c6; }
-[data-theme="spidey"] .holo-panel,
-[data-theme="spidey"] .resume-document {
-  background: linear-gradient(135deg, rgb(255 92 118 / 0.11), transparent 48%, rgb(120 189 255 / 0.1)), rgb(6 11 24 / 0.58);
-}
-[data-theme="spidey"] .holo-panel { --rail: linear-gradient(180deg, transparent, #78bdff 12%, var(--accent) 50%, #78bdff 88%, transparent); }
-[data-theme="spidey"] .resume-monitor { --color-fg: #fff0f4; --color-muted: #ead0dc; --color-accent: #ff9fb0; }
-[data-theme="spidey"] .resume-nav a { color: #9ed2ff; }
-[data-theme="spidey"] .resume-nav a:hover,
-[data-theme="spidey"] .resume-nav a[aria-current] { color: var(--gold); }
-[data-theme="spidey"] .resume-document::before,
-[data-theme="spidey"] .resume-document::after { border-color: var(--accent); }
-[data-theme="spidey"] ::selection { background: #8a2447; color: #fff0f4; }
-
-.scanlines {
-  background: repeating-linear-gradient(to bottom, transparent 0 2px, rgb(0 0 0 / 0.18) 2px 3px);
-}
-.vignette {
-  background: radial-gradient(ellipse at center, transparent 45%, color-mix(in srgb, var(--primary) 30%, transparent) 130%);
+:root {
+  color-scheme: dark;
+  --ink: #070b14;
+  --ink-rgb: 7 11 20;
+  --bone: #efe9dd;
+  --bone-rgb: 239 233 221;
+  --dim: rgb(var(--bone-rgb) / 0.76);
+  --line: rgb(var(--bone-rgb) / 0.17);
+  --ember: #ffb066;
+  --ember-pale: #ffdcb4;
+  --sky: #abc6ff;
+  --holo: #7fd4ff;
+  --holo-rgb: 127 212 255;
+  --gutter: clamp(20px, 5.5vw, 104px);
+  --bar: 64px;
+  --f-display: var(--font-fraunces), "Iowan Old Style", Georgia, serif;
+  --f-sans: var(--font-geist), system-ui, sans-serif;
+  --f-mono: var(--font-geist-mono), ui-monospace, Menlo, monospace;
 }
 
-@keyframes blink { 50% { opacity: 0; } }
-.caret::after { content: "▍"; margin-left: 2px; animation: blink 1s steps(1) infinite; color: var(--accent); }
+/* ------------------------------------------------------------------ page */
+html { background: var(--ink); scroll-behavior: smooth; scroll-padding-top: calc(var(--bar) + 16px); }
+body { background: var(--ink); color: var(--bone); font: 400 1.0625rem/1.6 var(--f-sans); }
+.site { position: relative; overflow-x: clip; }
+main { position: relative; z-index: 1; transition: opacity 0.5s ease; }
+/* Only the text columns take the pointer, so the callouts in the scene behind stay clickable beside them. */
+main, .hero, .chapter { pointer-events: none; }
+.hero-card, .col { pointer-events: auto; }
+::selection { background: rgb(255 176 102 / 0.32); color: #fff; }
+:focus-visible { outline: 2px solid var(--ember); outline-offset: 3px; }
+.skip { position: fixed; left: 12px; top: -80px; z-index: 50; padding: 12px 16px; background: var(--bone); color: var(--ink); font: 500 13px/1 var(--f-mono); }
+.skip:focus { top: 12px; }
+.link { color: var(--bone); text-decoration: underline; text-decoration-color: rgb(255 176 102 / 0.65); text-decoration-thickness: 1px; text-underline-offset: 5px; transition: color 0.16s ease; }
+.link:hover { color: var(--ember); }
+.actions .link, .card .link, .builds-head .link, .colophon .link { display: inline-block; padding-block: 15px; margin-block: -15px; }
+.arrow { display: inline-block; margin-left: 5px; transition: transform 0.16s ease; }
+.link:hover .arrow { transform: translate(2px, -2px); }
+.down { display: inline-block; margin-left: 0.6em; }
 
-@media (prefers-reduced-motion: reduce) {
-  .caret::after { animation: none; }
+/* ------------------------------------------------------------------ backdrop
+   The gradient is what you see before WebGL is up, and all you see if it never comes up. */
+.backdrop {
+  position: fixed; top: 0; left: 0; width: 100%; height: 100lvh; z-index: 0;
+  background: linear-gradient(180deg, #071023 0%, #11224b 36%, #3a3458 57%, #b96a41 69%, #1c1614 70.5%, #090b10 100%);
 }
-
-/* Hologram panel: translucent projected light, not a card. Scene shows through; edges fade out. */
-.holo-panel, .resume-document {
+.backdrop { /* a crosshair wherever the pointer is over the scene and not the text */
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='26' height='26'%3E%3Cpath d='M13 2v7M13 17v7M2 13h7M17 13h7' stroke='%23000' stroke-opacity='.55' stroke-width='3.4'/%3E%3Cpath d='M13 2v7M13 17v7M2 13h7M17 13h7' stroke='%237fd4ff' stroke-width='1.5'/%3E%3Ccircle cx='13' cy='13' r='1.4' fill='%23ffb066'/%3E%3C/svg%3E") 13 13, crosshair;
+}
+.backdrop-canvas { position: absolute; inset: 0; opacity: 0; transition: opacity 1.6s ease; }
+.backdrop-canvas[data-ready] { opacity: 1; }
+.backdrop::after { /* viewfinder corners */
+  content: ""; position: absolute; inset: calc(var(--bar) + 6px) 16px 16px; pointer-events: none; opacity: 0.55;
+  --c: linear-gradient(var(--holo) 0 0); --l: 22px;
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--accent) 10%, transparent), color-mix(in srgb, var(--accent) 3%, transparent) 60%, color-mix(in srgb, var(--accent) 7%, transparent)),
-    color-mix(in srgb, var(--bg) 58%, transparent);
-  backdrop-filter: blur(4px);
+    var(--c) 0 0 / var(--l) 1px, var(--c) 0 0 / 1px var(--l), var(--c) 100% 0 / var(--l) 1px, var(--c) 100% 0 / 1px var(--l),
+    var(--c) 0 100% / var(--l) 1px, var(--c) 0 100% / 1px var(--l), var(--c) 100% 100% / var(--l) 1px, var(--c) 100% 100% / 1px var(--l);
+  background-repeat: no-repeat;
 }
-.holo-panel {
-  position: absolute;
-  box-shadow: 0 0 50px color-mix(in srgb, var(--accent) 18%, transparent), inset 0 0 40px color-mix(in srgb, var(--accent) 10%, transparent);
-  /* side rails fade top and bottom like projected light */
-  --rail: linear-gradient(180deg, transparent, var(--accent) 12%, var(--accent) 88%, transparent);
-  border-image: var(--rail) 1;
-  border-left: 1px solid; border-right: 1px solid;
-  transform-origin: var(--origin, right center);
-  animation: holo-in 0.55s cubic-bezier(.2,.8,.2,1) both;
-  display: flex; flex-direction: column; overflow: hidden; /* header fixed, .holo-scroll scrolls */
+
+/* Callouts: labels the scene pins to its holograms (see TAGS in Scene.tsx). */
+.tag-holo {
+  position: absolute; left: 0; top: 0; display: grid; gap: 5px; padding: 0 0 8px 12px; margin: -58px 0 0 34px; white-space: nowrap;
+  border-left: 1px solid var(--holo); font: 500 11px/1 var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--holo);
+  text-shadow: 0 0 12px rgb(var(--holo-rgb) / 0.6); opacity: 0; visibility: hidden; transition: opacity 0.35s ease, visibility 0.35s;
 }
-.holo-scroll { scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--accent) 60%, transparent) transparent; }
-.holo-panel::before { /* scanlines + travelling bright band */
-  content: ""; position: sticky; top: 0; display: block; height: 0; pointer-events: none;
+.tag-holo[data-on="1"] { opacity: 1; visibility: visible; }
+.tag-holo::before { /* leader back to the hologram */
+  content: ""; position: absolute; left: -35px; bottom: -1px; width: 34px; height: 1px; background: var(--holo);
+  transform-origin: 100% 50%; transform: rotate(-58deg) scaleX(1.9); opacity: 0.7;
 }
-.holo-panel > * { position: relative; }
-.holo-panel, .holo-panel * { text-shadow: 0 0 7px color-mix(in srgb, var(--accent) 55%, transparent); }
-.holo-scan {
-  position: absolute; inset: 0; pointer-events: none; z-index: 1;
-  background: repeating-linear-gradient(to bottom, transparent 0 2px, color-mix(in srgb, var(--accent) 7%, transparent) 2px 3px);
+.tag-holo::after { content: ""; position: absolute; left: -1px; top: 0; width: 9px; height: 1px; background: var(--holo); }
+.tag-holo small { font-size: 10px; color: rgb(var(--bone-rgb) / 0.85); }
+.tag-holo:hover small { color: var(--ember); }
+
+/* ------------------------------------------------------------------ header */
+.bar {
+  position: fixed; inset: 0 0 auto 0; z-index: 30; height: var(--bar);
+  display: flex; align-items: center; gap: clamp(12px, 2vw, 28px); padding: 0 var(--gutter);
+  font: 500 12px/1 var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase;
 }
-@keyframes holo-in {
-  0% { opacity: 0; transform: perspective(1300px) rotateY(calc(var(--tilt, -9deg) * 1.55)) scaleY(0.02) scaleX(0.92); }
-  60% { opacity: 1; transform: perspective(1300px) rotateY(calc(var(--tilt, -9deg) * 1.1)) scaleY(1.02); }
-  100% { opacity: 1; transform: perspective(1300px) rotateY(var(--tilt, -9deg)) scaleY(1); }
+.bar::before { /* the résumé dissolves as it slides under the header instead of colliding with it */
+  content: ""; position: absolute; inset: 0 0 -26px 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(180deg, rgb(var(--ink-rgb) / 0.92) 0%, rgb(var(--ink-rgb) / 0.8) 62%, rgb(var(--ink-rgb) / 0) 100%);
+  -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  mask-image: linear-gradient(180deg, #000 58%, transparent 100%);
 }
-@media (max-width: 767px) {
-  .holo-panel { animation-name: holo-in-flat; transform-origin: center bottom; }
+.bar::after { /* a ruled edge, as on an instrument */
+  content: ""; position: absolute; left: var(--gutter); right: var(--gutter); bottom: 0; height: 4px; pointer-events: none; opacity: 0.4;
+  background: linear-gradient(var(--holo) 0 0) 0 100% / 100% 1px no-repeat, repeating-linear-gradient(90deg, var(--holo) 0 1px, transparent 1px 16px);
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
 }
-@keyframes holo-in-flat { 0% { opacity: 0; transform: scaleY(0.05); } 100% { opacity: 1; transform: none; } }
+.wordmark { font-size: 13px; letter-spacing: 0.24em; white-space: nowrap; padding: 14px 0; }
+.bar-nav { display: flex; margin-left: auto; }
+.bar-nav a { position: relative; padding: 16px 11px; color: var(--dim); transition: color 0.16s ease; }
+.bar-nav a:hover { color: var(--bone); }
+.bar-nav a[aria-current] { color: var(--ember); }
+.bar-nav a[aria-current]::after { content: ""; position: absolute; left: 11px; right: 11px; bottom: 8px; height: 1px; background: var(--ember); }
+.bar-clock { display: flex; align-items: center; gap: 10px; white-space: nowrap; }
+.bar-clock time { color: var(--ember); font-variant-numeric: tabular-nums; letter-spacing: 0.08em; }
+.bar-clock time::before { content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 9px; border-radius: 50%; background: var(--ember); box-shadow: 0 0 10px var(--ember); vertical-align: 1px; }
+.bar-phase { color: var(--dim); }
+.bar-button {
+  display: inline-flex; align-items: center; height: 36px; padding: 0 14px; white-space: nowrap; cursor: pointer;
+  border: 1px solid rgb(var(--bone-rgb) / 0.36); background: rgb(var(--ink-rgb) / 0.4); letter-spacing: 0.14em; text-transform: uppercase;
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+.bar-button:hover, .bar-button[aria-pressed="true"] { border-color: var(--ember); color: var(--ember); }
+
+/* ------------------------------------------------------------------ hero: the scene is the picture, the card is its title */
+.hero {
+  position: relative; min-height: 100svh; display: flex; align-items: flex-end;
+  padding: calc(var(--bar) + 24px) var(--gutter) clamp(28px, 7vh, 76px);
+}
+.hero::before { /* a reading scrim on the text side only */
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background:
+    linear-gradient(90deg, rgb(var(--ink-rgb) / 0.8) 0%, rgb(var(--ink-rgb) / 0.44) 34%, rgb(var(--ink-rgb) / 0) 64%),
+    linear-gradient(0deg, rgb(var(--ink-rgb) / 0.66) 0%, rgb(var(--ink-rgb) / 0) 42%);
+}
+.hero-card { position: relative; max-width: 780px; }
+.eyebrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; font: 500 12.5px/1.3 var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase; }
+.tag { padding: 5px 8px 4px; background: var(--ember); color: var(--ink); font-weight: 600; }
+.eyebrow-dim { color: var(--dim); }
+.hero h1 {
+  margin: 0.17em 0 0.2em -0.045em; font: 340 clamp(4.1rem, 12.4vw, 12.6rem)/0.84 var(--f-display);
+  font-variation-settings: "opsz" 144, "SOFT" 60; letter-spacing: -0.045em; white-space: nowrap;
+  text-shadow: 0 2px 44px rgb(var(--ink-rgb) / 0.55);
+}
+.hero h1 em, .chapter h2 em { font-style: italic; font-weight: 300; color: var(--ember-pale); }
+.premise { position: relative; max-width: 37em; padding-top: 18px; border-top: 1px solid var(--line); font-size: clamp(1.05rem, 1.38vw, 1.3rem); line-height: 1.5; color: rgb(var(--bone-rgb) / 0.94); }
+.premise::before { content: ""; position: absolute; left: 0; top: -2px; width: 64px; height: 3px; background: var(--ember); }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 22px; margin-top: 26px; font: 500 13px/1 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; }
+.button {
+  display: inline-flex; align-items: center; min-height: 46px; padding: 0 20px;
+  border: 1px solid rgb(var(--bone-rgb) / 0.42); background: rgb(var(--ink-rgb) / 0.5);
+  transition: background 0.16s ease, border-color 0.16s ease, color 0.16s ease;
+}
+.button:hover { border-color: var(--bone); background: rgb(var(--bone-rgb) / 0.12); }
+.button-primary { background: var(--bone); border-color: var(--bone); color: var(--ink); }
+.button-primary:hover { background: var(--ember); border-color: var(--ember); }
+.stats { display: flex; flex-wrap: wrap; gap: 16px clamp(24px, 3.4vw, 48px); margin-top: 34px; }
+.stats div { display: flex; flex-direction: column-reverse; gap: 7px; padding-left: 12px; border-left: 1px solid rgb(var(--holo-rgb) / 0.6); }
+.stats dd { font: 360 2.05rem/1 var(--f-display); font-variation-settings: "opsz" 72, "SOFT" 50; letter-spacing: -0.02em; }
+.stats dt { font: 500 11px/1.2 var(--f-mono); letter-spacing: 0.13em; text-transform: uppercase; color: var(--dim); }
+
+/* ------------------------------------------------------------------ reading scrim
+   One veil behind every chapter between the opening shot and the sunrise. It fades in and out at its ends,
+   so the picture is clear at dusk, held back while you read, and clear again at dawn. */
+.read { position: relative; isolation: isolate; }
+.read::before, #contact::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(90deg, rgb(var(--ink-rgb) / 0.95) 0%, rgb(var(--ink-rgb) / 0.9) 34%, rgb(var(--ink-rgb) / 0.58) 56%, rgb(var(--ink-rgb) / 0) 80%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 22vh, #000 calc(100% - 26vh), transparent 100%);
+}
+#contact { position: relative; isolation: isolate; }
+#contact::before {
+  background: linear-gradient(90deg, rgb(var(--ink-rgb) / 0.9) 0%, rgb(var(--ink-rgb) / 0.72) 34%, rgb(var(--ink-rgb) / 0) 66%);
+  mask-image: linear-gradient(180deg, transparent 0, #000 30vh);
+}
+
+/* ------------------------------------------------------------------ chapters */
+.chapter { padding: clamp(120px, 24vh, 220px) var(--gutter) clamp(48px, 9vh, 110px); }
+.col { max-width: 700px; }
+.stamp { display: flex; align-items: center; gap: 14px; font: 500 12px/1 var(--f-mono); letter-spacing: 0.18em; text-transform: uppercase; color: var(--dim); }
+.stamp time { color: var(--ember); font-variant-numeric: tabular-nums; }
+.stamp time::after { content: ""; display: inline-block; width: 28px; height: 1px; margin-left: 14px; background: var(--line); vertical-align: middle; }
+.chapter h2 { margin-top: 18px; font: 330 clamp(2.6rem, 5.3vw, 4.7rem)/1.02 var(--f-display); font-variation-settings: "opsz" 144, "SOFT" 50; letter-spacing: -0.03em; text-wrap: balance; }
+.lede { margin-top: 20px; max-width: 35em; font-size: clamp(1.1rem, 1.45vw, 1.3rem); line-height: 1.52; color: rgb(var(--bone-rgb) / 0.93); text-wrap: pretty; }
+.body { margin-top: 14px; color: var(--dim); text-wrap: pretty; }
+.chapter strong { font-weight: 600; color: var(--ember-pale); font-variant-numeric: tabular-nums; }
+.chapter h3 { font: 500 1.22rem/1.3 var(--f-sans); letter-spacing: -0.012em; }
+.tech { margin-top: 12px; font: 400 12.5px/1.65 var(--f-mono); color: var(--sky); }
+
+.about { display: grid; grid-template-columns: minmax(0, 1fr) 220px; gap: 40px; align-items: start; }
+.portrait img { width: 100%; height: auto; aspect-ratio: 3 / 4; object-fit: cover; object-position: 50% 62%; border: 1px solid var(--line); }
+.portrait { margin-top: 26px; }
+.roles { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 24px; }
+.roles li { padding: 6px 10px 5px; border: 1px solid var(--line); font: 500 11px/1.2 var(--f-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--dim); }
+
+.entry { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 0 20px; padding: 34px 0; border-top: 1px solid var(--line); }
+.col > .entry:first-of-type { margin-top: 44px; }
+.entry-logo { width: 44px; height: 44px; border-radius: 9px; background: #fff; object-fit: cover; }
+.entry-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 18px; margin-top: 6px; font: 400 12.5px/1.6 var(--f-mono); color: var(--dim); }
+.entry-meta span { color: var(--ember-pale); }
+.bullets { display: grid; gap: 10px; margin-top: 16px; color: var(--dim); line-height: 1.58; }
+.bullets li { position: relative; padding-left: 20px; text-wrap: pretty; }
+.bullets li::before { content: ""; position: absolute; left: 0; top: 0.74em; width: 9px; height: 1px; background: var(--ember); }
+
+.winners { display: grid; grid-template-columns: repeat(auto-fit, minmax(270px, 1fr)); gap: 16px; margin-top: 44px; }
+.card { /* a display panel: bracketed corners instead of a box */
+  display: flex; flex-direction: column; align-items: flex-start; padding: 24px; --c: linear-gradient(var(--holo) 0 0); --l: 14px;
+  background:
+    var(--c) 0 0 / var(--l) 1px, var(--c) 0 0 / 1px var(--l), var(--c) 100% 0 / var(--l) 1px, var(--c) 100% 0 / 1px var(--l),
+    var(--c) 0 100% / var(--l) 1px, var(--c) 0 100% / 1px var(--l), var(--c) 100% 100% / var(--l) 1px, var(--c) 100% 100% / 1px var(--l),
+    rgb(var(--holo-rgb) / 0.045);
+  background-repeat: no-repeat; box-shadow: inset 0 0 0 1px rgb(var(--holo-rgb) / 0.1);
+}
+.card .tech { margin-bottom: 18px; }
+.card .link { margin-top: auto; font: 500 12px/1 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; }
+.awards { display: grid; gap: 7px; margin-bottom: 18px; font: 500 11px/1.35 var(--f-mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--ember); }
+.awards li { display: flex; gap: 10px; }
+.awards li::before { content: ""; flex: none; width: 7px; height: 7px; margin-top: 3px; background: var(--ember); transform: rotate(45deg); }
+.builds { margin-top: 30px; }
+.builds > li { padding: 22px 0; border-top: 1px solid var(--line); }
+.builds-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; }
+.builds-head .link { flex: none; font: 500 12px/1 var(--f-mono); letter-spacing: 0.12em; text-transform: uppercase; }
+.builds .body { margin-top: 8px; }
+
+/* Skills, listed the way an auto-battler lists a team: a hexagon with the count, the trait, then its units. */
+.traits { margin-top: 44px; }
+.traits > li { display: grid; grid-template-columns: 46px minmax(0, 1fr); gap: 0 20px; padding: 18px 0; border-top: 1px solid var(--line); }
+.trait-count {
+  display: grid; place-items: center; width: 46px; height: 52px; clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
+  background: rgb(var(--holo-rgb) / 0.2); color: var(--holo); font: 600 15px/1 var(--f-mono); font-variant-numeric: tabular-nums;
+}
+.traits > li[data-tier="2"] .trait-count { background: rgb(var(--bone-rgb) / 0.86); color: var(--ink); }
+.traits > li[data-tier="3"] .trait-count { background: var(--ember); color: var(--ink); }
+.traits h3 { padding-top: 3px; font: 500 11.5px/1.3 var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--ember); }
+.units { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 11px; }
+.units li { padding: 6px 10px 5px; border: 1px solid var(--line); background: rgb(var(--ink-rgb) / 0.4); font-size: 0.94rem; line-height: 1.25; color: rgb(var(--bone-rgb) / 0.93); }
+
+/* ------------------------------------------------------------------ contact: sunrise */
+#contact { min-height: 100svh; display: flex; align-items: flex-end; }
+.reach { margin-top: 36px; border-bottom: 1px solid var(--line); }
+.reach li { display: grid; grid-template-columns: 110px minmax(0, 1fr); align-items: center; border-top: 1px solid var(--line); }
+.reach span { font: 500 11px/1 var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); }
+.reach .link { display: inline-block; justify-self: start; padding: 11px 0; font-size: 1.2rem; overflow-wrap: anywhere; }
+.colophon { display: grid; gap: 8px; max-width: 58ch; margin-top: 60px; padding-top: 22px; border-top: 1px solid var(--line); font-size: 0.84rem; line-height: 1.55; color: var(--dim); }
+
+/* ------------------------------------------------------------------ scene-only: the text steps aside */
+.site[data-scene-only] main, .site[data-scene-only] .bar-nav { opacity: 0; pointer-events: none; }
+.site::before, .site::after { /* letterbox */
+  content: ""; position: fixed; left: 0; right: 0; z-index: 20; height: clamp(18px, 7vh, 64px); background: #000; pointer-events: none;
+  transition: transform 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.site::before { top: 0; transform: translateY(-101%); }
+.site::after { bottom: 0; transform: translateY(101%); }
+.site[data-scene-only]::before, .site[data-scene-only]::after { transform: none; }
+.scrubber { position: fixed; left: 50%; bottom: calc(clamp(18px, 7vh, 64px) + 14px); z-index: 30; width: min(560px, calc(100vw - 40px)); transform: translateX(-50%); text-align: center; font: 500 11px/1.5 var(--f-mono); letter-spacing: 0.14em; text-transform: uppercase; color: var(--dim); text-shadow: 0 1px 6px #000; }
+.scrubber label { color: var(--bone); }
+.scrubber input { display: block; width: 100%; height: 44px; accent-color: var(--ember); cursor: pointer; }
+
+/* ------------------------------------------------------------------ intro: a matchmaking queue, then waking up in a lift, a room
+   Shown only while the script in layout.tsx has set html[data-intro]: open -> fly -> land (see Site.tsx).
+   open: a terminal on black (typed command, split-flap board, status line; see Intro.tsx) while the scene comes up.
+   fly: the terminal fades, eyelids open (blinking, blurred, then sharp) on the 3D lift the scene shows (scene/lift.ts); the
+   name comes over the room as it is built (scene/room.ts, materialize). land: the bars and the page come back. */
+.intro { display: none; }
+html[data-intro] .intro {
+  position: fixed; inset: 0; z-index: 60; display: grid; place-items: center; padding: 0 var(--gutter); pointer-events: none; text-align: center;
+  background: #000; transition: background-color 1.8s ease;
+}
+html[data-intro="fly"] .intro, html[data-intro="land"] .intro { background: transparent; transition: none; } /* the eyelids hold the black now */
+.intro > * { grid-area: 1 / 1; }
+.intro-kicker { font: 500 12px/1.6 var(--f-mono); letter-spacing: 0.32em; text-transform: uppercase; text-wrap: balance; color: var(--ember); }
+.intro-term { width: min(100%, 1100px); display: grid; justify-items: center; gap: clamp(14px, 3.2vh, 30px); opacity: 0; transition: opacity 0.7s ease; font-family: var(--f-mono); }
+html[data-intro="open"] .intro-term { opacity: 1; transition-duration: 0.4s; }
+.intro-cmd, .intro-note { min-height: 1.6em; font-weight: 500; text-transform: uppercase; }
+.intro-cmd { font-size: clamp(11px, 1.3vw, 14px); letter-spacing: 0.16em; color: var(--holo); }
+.intro-cmd::after { content: ""; display: inline-block; width: 0.55em; height: 1.1em; margin-left: 0.35em; vertical-align: -0.2em; background: currentColor; animation: caret 1s steps(2, start) infinite; }
+.intro-note { font-size: clamp(10px, 1.2vw, 13px); letter-spacing: 0.26em; color: var(--ember); }
+/* A split-flap tile: the static top and bottom halves, and the two flaps hinged on the seam (Intro.tsx swings them). */
+.intro-board { display: flex; justify-content: center; gap: 0.08em; font-size: min(4.2rem, calc(92vw / (var(--n, 20) * 0.82))); }
+.intro-board span { position: relative; width: 0.72em; height: 1.2em; perspective: 5em; border-radius: 0.07em; background: #0b0e18; box-shadow: 0 0.04em 0.12em rgb(0 0 0 / 0.6); }
+.intro-board i { position: absolute; left: 0; right: 0; height: 50%; overflow: hidden; backface-visibility: hidden; background: #1c2233; }
+.intro-board i.t { top: 0; border-radius: 0.07em 0.07em 0 0; transform-origin: 50% 100%; }
+.intro-board i.m { bottom: 0; border-radius: 0 0 0.07em 0.07em; transform-origin: 50% 0; background: #151b2b; }
+.intro-board b { position: absolute; left: 0; right: 0; height: 200%; display: grid; place-items: center; font: 600 1em/1 var(--f-mono); color: var(--bone); }
+.intro-board .t b { top: 0; }
+.intro-board .m b { bottom: 0; }
+.intro-board span::after { content: ""; position: absolute; inset: 50% 0 auto; height: 2px; margin-top: -1px; background: #05070d; z-index: 1; } /* the axle */
+.intro[data-beat="found"] .intro-board b { color: var(--ember-pale); }
+.intro[data-beat="found"]::before { content: ""; position: fixed; inset: 0; background: radial-gradient(60% 50% at 50% 50%, rgb(255 176 102 / 0.28), transparent 70%); animation: found 1.1s ease-out both; }
+@keyframes caret { to { opacity: 0; } }
+@keyframes found { 0% { opacity: 0; } 15% { opacity: 1; } 100% { opacity: 0; } }
+.intro-title { align-self: start; margin-top: max(15vh, 90px); display: grid; justify-items: center; gap: 22px; opacity: 0; text-shadow: 0 2px 50px rgb(0 0 0 / 0.75); }
+html[data-intro="fly"] .intro-title, html[data-intro="land"] .intro-title { animation: intro-title 3.2s 8.8s ease both; }
+.intro-name { font: 330 clamp(2.8rem, 7.4vw, 7.6rem)/0.95 var(--f-display); text-wrap: balance; font-variation-settings: "opsz" 144, "SOFT" 50; letter-spacing: -0.04em; color: var(--bone); }
+.intro-name em { color: var(--ember-pale); }
+/* Waking up: two lids that blink open, and a blur that sharpens behind them. */
+.intro-lid { position: fixed; inset: 0 0 49% 0; background: #000; box-shadow: 0 6vh 8vh 3vh #000; }
+.intro-lid[data-low] { inset: 49% 0 0 0; box-shadow: 0 -6vh 8vh 3vh #000; }
+.intro-focus { position: fixed; inset: 0; opacity: 0; background: radial-gradient(120% 90% at 50% 50%, transparent 35%, rgb(0 0 0 / 0.55) 100%); }
+:is(html[data-intro="fly"], html[data-intro="land"]) .intro-lid { animation: lid-up 2.4s 0.4s ease-in-out both; }
+:is(html[data-intro="fly"], html[data-intro="land"]) .intro-lid[data-low] { animation-name: lid-down; }
+:is(html[data-intro="fly"], html[data-intro="land"]) .intro-focus { animation: focus 2.8s 0.4s ease-out backwards; }
+@keyframes lid-up { 0% { transform: none; } 16% { transform: translateY(-30%); } 26% { transform: translateY(-6%); } 46% { transform: translateY(-70%); } 100% { transform: translateY(-125%); visibility: hidden; } }
+@keyframes lid-down { 0% { transform: none; } 16% { transform: translateY(30%); } 26% { transform: translateY(6%); } 46% { transform: translateY(70%); } 100% { transform: translateY(125%); visibility: hidden; } }
+@keyframes focus { 0% { opacity: 1; backdrop-filter: blur(26px) brightness(0.7); } 100% { opacity: 0; backdrop-filter: blur(0) brightness(1); } }
+.intro-skip { position: fixed; right: var(--gutter); bottom: calc(clamp(18px, 7vh, 64px) + 16px); font: 500 10px/1 var(--f-mono); letter-spacing: 0.22em; text-transform: uppercase; color: rgb(var(--bone-rgb) / 0.45); transition: opacity 0.5s ease; }
+html[data-intro="land"] .intro-skip { opacity: 0; }
+@keyframes intro-title {
+  0% { opacity: 0; filter: blur(14px); transform: scale(1.06); }
+  28%, 72% { opacity: 1; filter: none; transform: none; }
+  100% { opacity: 0; filter: blur(10px); transform: scale(0.97); }
+}
+/* Until the camera lands: bars top and bottom, and the page held back. */
+.bar, .tags { transition: opacity 0.6s ease; }
+html[data-intro]:not([data-intro="land"]) :is(.bar, .tags, .hero-card) { opacity: 0; }
+html[data-intro]:not([data-intro="land"]) .site::before, html[data-intro]:not([data-intro="land"]) .site::after { transform: none; }
+html[data-intro] .backdrop-canvas { transition-duration: 0.5s; }
+
+/* ------------------------------------------------------------------ small screens */
+@media (max-width: 900px) {
+  :root { --bar: 56px; }
+  .bar-phase, .bar-button:not(.bar-resume) { display: none; }
+  .bar-clock { margin-left: auto; }
+  .bar-resume { height: 44px; }
+  .bar-nav { /* thumb-reach section bar */
+    position: fixed; inset: auto 0 0 0; z-index: 30; margin: 0; justify-content: space-around;
+    padding: 0 6px env(safe-area-inset-bottom, 0px); background: rgb(var(--ink-rgb) / 0.94); border-top: 1px solid var(--line);
+  }
+  .bar-nav a { display: grid; place-items: center; min-height: 52px; padding: 0 6px; font-size: 10.5px; letter-spacing: 0.1em; }
+  .bar-nav a[aria-current]::after { left: 6px; right: 6px; bottom: 12px; }
+  .bar-nav a[data-chapter="background"] { display: none; }
+  main { padding-bottom: calc(52px + env(safe-area-inset-bottom, 0px)); }
+  .hero { min-height: calc(100svh - 52px - env(safe-area-inset-bottom, 0px)); padding: calc(var(--bar) + 8px) var(--gutter) 24px; } /* ends above the section bar */
+  .actions { margin-top: 18px; }
+  .stats { margin-top: 20px; }
+  .hero::before { background: linear-gradient(0deg, rgb(var(--ink-rgb) / 0.9) 0%, rgb(var(--ink-rgb) / 0.62) 46%, rgb(var(--ink-rgb) / 0) 78%); }
+  .tags, .backdrop::after { display: none; }
+  .read::before { background: rgb(var(--ink-rgb) / 0.88); }
+  #contact::before { background: rgb(var(--ink-rgb) / 0.74); }
+  .about { grid-template-columns: minmax(0, 1fr); gap: 0; }
+  .portrait { max-width: 250px; }
+  .entry { grid-template-columns: 36px minmax(0, 1fr); gap: 0 14px; }
+  .entry-logo { width: 36px; height: 36px; border-radius: 7px; }
+  .traits > li { gap: 0 14px; }
+  .reach li { grid-template-columns: minmax(0, 1fr); padding-top: 12px; }
+  .reach .link { padding-top: 4px; }
+}
+@media (max-width: 420px) {
+  .bar-clock time::before { display: none; }
+  .eyebrow-dim { display: none; } /* the line below the name already says Uber */
+  .stats { gap: 16px 22px; }
+  .stats dd { font-size: 1.7rem; }
+}
+
+/* ------------------------------------------------------------------ motion */
+@media (prefers-reduced-motion: no-preference) {
+  html:not([data-intro]) .hero-card > *, html[data-intro="land"] .hero-card > * { animation: settle 0.9s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+  .hero-card > :nth-child(2) { animation-delay: 0.08s; }
+  .hero-card > :nth-child(3) { animation-delay: 0.16s; }
+  .hero-card > :nth-child(4) { animation-delay: 0.24s; }
+  .hero-card > :nth-child(5) { animation-delay: 0.32s; }
+  @keyframes settle { from { opacity: 0; transform: translateY(16px); } }
+  @supports (animation-timeline: view()) {
+    .stamp, .chapter h2, .lede, .about, .entry, .card, .builds > li, .traits > li, .reach {
+      animation: rise linear both; animation-timeline: view(); animation-range: entry 0% entry 26%;
+    }
+    @keyframes rise { from { opacity: 0; transform: translateY(20px); } }
+  }
+}
 @media (prefers-reduced-motion: reduce) {
-  .holo-panel { animation: none; transform: perspective(1300px) rotateY(var(--tilt, -9deg)); }
-}
-
-/* Local layout tools inherit the HUD palette but stay opaque and readable over the scene. */
-.layout-editor {
-  position: fixed; top: 52px; left: 12px; z-index: 50;
-  width: min(280px, calc(100vw - 24px)); max-height: calc(100dvh - 160px); overflow-y: auto;
-  background: var(--bg); color: var(--color-fg); border: 1px solid var(--accent);
-  padding: 12px; font: 12px/1.5 var(--font-inter), sans-serif;
-}
-.layout-editor-heading, .layout-editor-actions, .layout-editor-coordinates { display: flex; gap: 8px; align-items: center; }
-.layout-editor-heading { justify-content: space-between; }
-.layout-editor.is-collapsed { width: min(190px, calc(100vw - 24px)); }
-.layout-editor .layout-editor-move { touch-action: none; cursor: move; user-select: none; }
-.layout-editor fieldset { border: 0; padding: 0; margin: 12px 0 0; min-width: 0; }
-.layout-editor label { display: block; margin: 10px 0; }
-.layout-editor p { margin-top: 8px; }
-.layout-editor p:empty { display: none; }
-.layout-editor select, .layout-editor input[type="number"] {
-  display: block; width: 100%; padding: 6px; background: var(--bg); color: var(--color-fg);
-  border: 1px solid var(--accent); font: inherit;
-}
-.layout-editor input[type="range"] { display: block; width: 100%; accent-color: var(--gold); }
-.layout-editor-coordinates label { flex: 1; min-width: 0; }
-.layout-editor button, .layout-drag-handle {
-  padding: 7px 9px; border: 1px solid var(--accent); color: var(--color-fg); background: var(--bg); cursor: pointer;
-}
-.layout-editor button:hover, .layout-editor button[aria-pressed="true"] { color: var(--gold); border-color: var(--gold); }
-.layout-editor button:disabled { opacity: 0.45; cursor: not-allowed; }
-.layout-editor-save { width: 100%; margin-top: 12px; }
-.layout-editor :focus-visible, .layout-drag-handle:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
-.layout-drag-handle { touch-action: none; cursor: move; font: 12px var(--font-inter), sans-serif; flex-shrink: 0; }
-@media (max-width: 767px) {
-  .layout-editor { top: auto; bottom: 120px; max-height: 45dvh; }
-}
-
-
-/* Opening a section: the profile zooms to the camera while the flat résumé layer (opacity/scale driven per frame by HtmlPanel.tsx)
-   cross-fades in. --profile-fade is the matching fade-out of the profile. */
-.monitor-face[data-active="true"]:not([data-reading="true"]) > .holo-panel { display: none; }
-.monitor-face > .holo-panel { opacity: var(--profile-fade, 1); }
-.resume-layer { position: absolute; visibility: hidden; opacity: 0; pointer-events: none; }
-
-/* Independent projections: floating navigation beside a framed, internally scrolling document. */
-.resume-monitor {
-  position: relative; width: 100%; height: 100%; min-width: 0; min-height: 0;
-  display: flex; flex-direction: column; overflow: hidden; container-type: inline-size;
-  color: var(--color-fg); outline: none;
-  --color-fg: #f2ffff; --color-muted: #cde8ed;
-  --color-accent: color-mix(in srgb, var(--accent) 85%, var(--color-fg));
-  --doc-h-size: 19px; --doc-p-size: 16px; --doc-bullet-size: 16px;
-  text-shadow: 0 1px 2px rgb(0 0 0 / 0.85);
-}
-.resume-name, .resume-section-title { text-shadow: 0 1px 2px rgb(0 0 0 / 0.85), 0 0 5px color-mix(in srgb, var(--accent) 25%, transparent); }
-.resume-monitor.mobile-resume { position: absolute; inset: 54px 12px 16px; width: auto; height: auto; }
-.resume-workspace { display: flex; flex: 1; min-height: 0; min-width: 0; gap: 40px; padding: 8px; }
-/* The document is the only framed projection; the nav beside it floats free over the scene. */
-.resume-document {
-  position: relative; display: flex; flex-direction: column; flex: 1; min-width: 0; min-height: 0; overflow: hidden;
-  border: 1px solid color-mix(in srgb, var(--accent) 50%, transparent);
-  box-shadow: 0 0 40px color-mix(in srgb, var(--accent) 16%, transparent), inset 0 0 40px color-mix(in srgb, var(--accent) 8%, transparent);
-}
-.resume-document::before, .resume-document::after { /* corner brackets */
-  content: ""; position: absolute; width: 22px; height: 22px; pointer-events: none; z-index: 1;
-  border: 0 solid var(--gold);
-}
-.resume-document::before { top: -1px; left: -1px; border-width: 2px 0 0 2px; }
-.resume-document::after { bottom: -1px; right: -1px; border-width: 0 2px 2px 0; }
-.resume-toolbar {
-  display: flex; align-items: center; gap: 16px; flex-shrink: 0; min-height: 54px; padding: 0 28px;
-  font: 12px/1.4 var(--font-jetbrains), monospace;
-}
-.resume-monitor .text-accent, .resume-route { color: var(--color-accent); }
-.resume-system { margin-left: auto; color: var(--color-muted); font-size: 10px; letter-spacing: 0.1em; }
-.resume-close { display: flex; align-items: center; gap: 10px; margin-left: auto; color: var(--color-accent); white-space: nowrap; }
-.resume-close span { font-size: 22px; line-height: 1; }
-.resume-close:hover { color: var(--gold); }
-.resume-nav {
-  width: 232px; flex-shrink: 0; display: flex; flex-direction: column; justify-content: safe center; gap: 8px; padding: 12px 0;
-  overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
-  scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--accent) 60%, transparent) transparent;
-}
-/* Holographic labels, matching J.A.R.V.I.S.' intro text: Orbitron, wide tracking, accent-coloured light with a soft halo. */
-.resume-nav a {
-  display: flex; align-items: center; flex-shrink: 0; gap: 16px; min-height: 64px; padding: 10px 12px;
-  color: var(--accent); font: 500 13px/1.4 var(--font-orbitron), sans-serif; letter-spacing: 0.2em; text-transform: uppercase; white-space: nowrap;
-  text-shadow: 0 0 3px currentColor, 0 0 10px color-mix(in srgb, currentColor 70%, transparent), 0 0 22px color-mix(in srgb, currentColor 40%, transparent);
-  animation: holo-flicker 5s steps(1) infinite;
-}
-.resume-nav a:nth-child(2n) { animation-delay: -1.7s; }
-.resume-nav a:nth-child(3n) { animation-delay: -3.1s; }
-@keyframes holo-flicker { 0%, 100% { opacity: 1; } 93% { opacity: 0.82; } 94% { opacity: 1; } 97% { opacity: 0.9; } }
-@media (prefers-reduced-motion: reduce) { .resume-nav a { animation: none; } }
-.resume-nav svg { display: block; width: 36px; height: 36px; flex-shrink: 0; filter: drop-shadow(0 0 4px currentColor) drop-shadow(0 0 10px color-mix(in srgb, currentColor 60%, transparent)); }
-.resume-nav a:hover, .resume-nav a[aria-current] { color: var(--gold); }
-.resume-nav a[aria-current] { background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 12%, transparent), transparent); }
-.resume-nav .resume-download { margin-top: 12px; min-height: 44px; font-size: 10px; color: var(--gold); }
-.resume-scroll {
-  position: relative; flex: 1; min-width: 0; min-height: 0; overflow-y: auto; overflow-x: hidden;
-  padding: 28px 32px; overscroll-behavior: contain; scrollbar-gutter: stable;
-  scrollbar-width: thin; scrollbar-color: color-mix(in srgb, var(--accent) 60%, transparent) transparent;
-}
-.resume-monitor :focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
-.resume-scroll:focus-visible { outline-offset: -3px; }
-.resume-monitor ::selection { background: color-mix(in srgb, var(--accent) 30%, transparent); color: var(--color-fg); }
-.resume-chapter { padding-bottom: 40px; margin-bottom: 40px; border-bottom: 1px solid color-mix(in srgb, var(--accent) 20%, transparent); }
-.resume-chapter:last-child { border: 0; margin-bottom: 0; padding-bottom: 28px; }
-.resume-section-title { margin-bottom: 26px; font-family: var(--font-orbitron), sans-serif; font-size: 25px; line-height: 1.2; color: var(--gold); }
-.resume-introduction { display: grid; grid-template-columns: minmax(0, 1fr) 180px; gap: 30px; align-items: start; }
-.resume-hello { font-size: 22px; color: var(--color-muted); }
-.resume-name { margin-top: 4px; font-family: var(--font-orbitron), sans-serif; font-size: 38px; line-height: 1.2; color: var(--color-fg); }
-.resume-role { margin-top: 14px; color: var(--color-accent); font-size: 16px; }
-.resume-bio { margin-top: 18px; font-size: 16px; line-height: 1.7; color: var(--color-muted); max-width: 62ch; }
-.resume-portrait {
-  min-height: 254px; background: url('/images/huy-hoang.jpg') center 40% / cover no-repeat;
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
-}
-.resume-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; margin-top: 32px; padding-top: 24px; border-top: 1px solid color-mix(in srgb, var(--accent) 20%, transparent); }
-.resume-stats > div { display: flex; flex-direction: column-reverse; gap: 7px; }
-.resume-stats dt { font-size: 12px; line-height: 1.45; color: var(--color-muted); }
-.resume-stats dd { font: 25px/1.2 var(--font-jetbrains), monospace; color: var(--color-accent); font-variant-numeric: tabular-nums; }
-.resume-chapter .document-entry + .document-entry { padding-top: 24px; border-top: 1px solid color-mix(in srgb, var(--accent) 12%, transparent); }
-.resume-education-entry h3 { font-size: 19px; font-weight: 500; }
-.resume-education-entry p { margin-top: 10px; font-size: 16px; color: var(--color-muted); }
-.resume-education-entry .resume-education-meta { font: 12px/1.5 var(--font-jetbrains), monospace; }
-.resume-footer { display: flex; justify-content: space-between; gap: 12px; flex-shrink: 0; padding: 9px 28px; color: var(--color-muted); font: 10px/1.4 var(--font-jetbrains), monospace; }
-@container (max-width: 760px) {
-  .resume-workspace { flex-direction: column; gap: 16px; padding: 4px; }
-  .resume-toolbar { padding-inline: 14px; gap: 12px; }
-  .resume-system { display: none; }
-  .resume-nav { width: 100%; flex-direction: row; justify-content: flex-start; overflow-x: auto; overflow-y: hidden; padding: 4px; }
-  .resume-nav a { gap: 10px; white-space: nowrap; min-height: 44px; font-size: 13px; }
-  .resume-nav svg { width: 20px; height: 20px; }
-  .resume-nav .resume-download { margin-top: 0; }
-  .resume-scroll { padding: 28px 18px; }
-  .resume-introduction { grid-template-columns: 1fr; }
-  .resume-portrait { display: none; }
-  .resume-name { font-size: 30px; }
-  .resume-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .resume-footer { padding-inline: 18px; }
-  .resume-footer span:last-child { display: none; }
+  html { scroll-behavior: auto; }
+  .backdrop-canvas, main, .site::before, .site::after { transition: none; }
 }

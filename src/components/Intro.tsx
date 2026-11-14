@@ -1,35 +1,119 @@
 "use client";
 
-import { useEffect } from "react";
-import { LAST, TYPE_MS } from "@/data/intro";
+import { useEffect, useRef } from "react";
+import { flipPath } from "@/lib/flip";
+import { portfolio as p } from "@/data/portfolio";
 
-/** Opening controls. The speech itself is a 3D hologram over the table (Speech in Scene.tsx); this keeps the timing, keys and a screen-reader copy. */
-export default function Intro({ step, text, reduced, onNextAction, onDoneAction, onBeginAction }: {
-  step: number; text: string; reduced: boolean; onNextAction: () => void; onDoneAction: () => void; onBeginAction: () => void;
-}) {
-  // Auto-advance after the line has been typed and had time to be read; Next / Enter / Space / → skip ahead.
+type Line = "cmd" | "board" | "note";
+// The queue, as a game would run it: [start in ms, where it shows, text, optional beat set on the card]. `board` flips on
+// the split-flap; `cmd` and `note` are typed. The name card that follows is part of the flight (see Site.tsx).
+const SCRIPT: readonly (readonly [number, Line, string, string?])[] = [
+  [200, "cmd", "> locating nearest server"],
+  [800, "board", "SAN FRANCISCO"],
+  [1000, "note", "REGION NA-WEST · PING 12 MS"],
+  [2400, "cmd", "> searching for a match"],
+  [2500, "note", "IN QUEUE · 1 PLAYER READY"],
+  [3100, "board", "MATCH FOUND", "found"],
+  [3400, "note", "ACCEPTED · LOADING ARENA"],
+  [4500, "board", "WELCOME TO THE ARENA"],
+];
+const END = 6400; // when the last line has had its moment: the flight may begin
+const COLS = Math.max(...SCRIPT.filter((s) => s[1] === "board").map((s) => s[2].length)); // a real board has a fixed number of tiles
+const STEP = 120, STAGGER = 18; // ms for one flap to fall; ms between one tile starting and the next
+const TYPE = { cmd: 24, note: 14 }; // ms per typed character
+
+// A tile is four halves: the static top and bottom, and the two flaps that swing over them (the old top falls, the new bottom lands).
+const tile = () => {
+  const el = document.createElement("span");
+  el.innerHTML = '<i class="t"><b></b></i><i class="m"><b></b></i><i class="m"><b></b></i><i class="t"><b></b></i>';
+  const [sTop, sBot, fBot, fTop] = [...el.children] as HTMLElement[];
+  return { el, sTop, sBot, fBot, fTop, cur: " ", path: [] as string[], start: 0, shown: 0 };
+};
+type Tile = ReturnType<typeof tile>;
+const paint = (half: HTMLElement, ch: string) => { half.firstElementChild!.textContent = ch; };
+const flap = (tl: Tile, from: string, to: string) => {
+  paint(tl.sTop, to); paint(tl.sBot, from); paint(tl.fTop, from); paint(tl.fBot, to);
+  [tl.fTop, tl.fBot].forEach((h) => h.getAnimations().forEach((a) => a.cancel()));
+  tl.fTop.animate({ transform: ["rotateX(0)", "rotateX(-90deg)"] }, { duration: STEP / 2, easing: "ease-in", fill: "forwards" });
+  tl.fBot.animate({ transform: ["rotateX(90deg)", "rotateX(0)"] }, { duration: STEP / 2, delay: STEP / 2, easing: "ease-out", fill: "both" });
+};
+
+/** Rest a tile on `ch`: all four halves show it and no flap is mid-air. */
+const settle = (tl: Tile, ch: string) => {
+  tl.cur = ch;
+  [tl.sTop, tl.sBot, tl.fTop, tl.fBot].forEach((h) => paint(h, ch));
+  [tl.fTop, tl.fBot].forEach((h) => h.getAnimations().forEach((a) => a.cancel()));
+};
+
+/**
+ * The 2D half of the intro: the opening card (a matchmaking terminal on black), the eyelids that open on the lift the
+ * scene shows, and the name card. `onDone` fires when the queue has run and the flight may begin.
+ */
+export default function Intro({ onDone }: { onDone: () => void }) {
+  const root = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    if (step === LAST) return;
-    const id = setTimeout(onNextAction, reduced ? 3500 : text.length * (TYPE_MS + 45) + 1200);
-    return () => clearTimeout(id);
-  }, [step, text, reduced, onNextAction]);
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") return onDoneAction();
-      if (e.target instanceof HTMLElement && e.target.closest("button, a")) return;
-      if (["Enter", " ", "ArrowRight"].includes(e.key)) { e.preventDefault(); onNextAction(); }
+    const el = root.current, html = document.documentElement;
+    if (!el || html.dataset.intro !== "open") return;
+    const slot = (name: Line) => el.querySelector<HTMLElement>(`[data-slot=${name}]`)!;
+    const tiles = Array.from({ length: COLS }, tile);
+    const typing: Partial<Record<"cmd" | "note", { text: string; at: number }>> = {};
+    const t0 = performance.now();
+    let next = 0, raf = 0, queued = false;
+    slot("cmd").replaceChildren();
+    slot("note").replaceChildren();
+    slot("board").style.setProperty("--n", String(COLS));
+    slot("board").replaceChildren(...tiles.map((tl) => tl.el));
+    delete el.dataset.beat;
+
+    const frame = (now: number) => {
+      if (html.dataset.intro === undefined) return; // skipped, or over
+      if (!queued) raf = requestAnimationFrame(frame); // the card has nothing left to do once the flight has been called
+      const t = now - t0;
+      while (!queued && next < SCRIPT.length && SCRIPT[next][0] <= t) {
+        const [, name, text, beat] = SCRIPT[next++];
+        if (beat) el.dataset.beat = beat;
+        if (name === "board") {
+          const word = text.padStart((COLS + text.length) >> 1).padEnd(COLS); // centred
+          tiles.forEach((tl, i) => { tl.path = flipPath(tl.cur, word[i], i); tl.start = t + i * STAGGER; tl.shown = 0; });
+        } else typing[name] = { text, at: t };
+      }
+      for (const name of ["cmd", "note"] as const) {
+        const a = typing[name];
+        if (!a) continue;
+        slot(name).textContent = a.text.slice(0, Math.floor((t - a.at) / TYPE[name]));
+        if ((t - a.at) / TYPE[name] >= a.text.length) delete typing[name];
+      }
+      for (const tl of tiles) {
+        if (!tl.path.length || t < tl.start) continue;
+        const begun = Math.min(Math.floor((t - tl.start) / STEP) + 1, tl.path.length);
+        if (begun > tl.shown) { flap(tl, begun > 1 ? tl.path[begun - 2] : tl.cur, tl.path[begun - 1]); tl.shown = begun; }
+        if (t - tl.start >= tl.path.length * STEP) { // the last flap has landed: rest on it
+          settle(tl, tl.path[tl.path.length - 1]);
+          tl.path = [];
+        }
+      }
+      if (!queued && t >= END) { queued = true; onDone(); }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onNextAction, onDoneAction]);
+    raf = requestAnimationFrame(frame);
+    return () => cancelAnimationFrame(raf);
+  }, [onDone]);
 
   return (
-    <div role="region" aria-label="Introduction" className="pointer-events-none absolute inset-x-0 bottom-28 z-40 sm:bottom-16 flex justify-center">
-      <span className="sr-only" aria-live="polite">{text}</span>
-      <div className="pointer-events-auto flex max-w-[calc(100%-32px)] gap-5 text-center font-mono text-xs text-accent">
-        {step < LAST && <button onClick={onNextAction} className="hover:text-gold">[ NEXT ▸ ]</button>}
-        <button onClick={step === LAST ? onBeginAction : onDoneAction} className="text-muted hover:text-gold">[ {step === LAST ? "scroll to begin or click on a section you are interested in" : "SKIP"} ]</button>
+    <div className="intro" ref={root} aria-hidden="true">
+      <div className="intro-focus" />
+      <div className="intro-lid" />
+      <div className="intro-lid" data-low />
+      <div className="intro-term">
+        <p className="intro-cmd" data-slot="cmd" />
+        <p className="intro-board" data-slot="board" />
+        <p className="intro-note" data-slot="note" />
       </div>
+      <div className="intro-title">
+        <p className="intro-kicker">Welcome to</p>
+        <p className="intro-name">{p.name}’s <em>Portfolio</em></p>
+      </div>
+      <small className="intro-skip">Tap or press any key to skip</small>
     </div>
   );
 }
