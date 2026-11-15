@@ -91,8 +91,7 @@ export default function Site({ children }: { children: ReactNode }) {
     const root = document.documentElement;
     if (root.dataset.intro === undefined) return;
     if (scrollY > 4) { delete root.dataset.intro; return; } // restored half way down the page: nothing to introduce
-    const t0 = performance.now();
-    let raf = 0, flight = 0;
+    let raf = 0, flight = 0, t0 = 0; // t0: the first frame drawn. A page loaded out of sight has not been waiting until then.
     const end = () => {
       cancelAnimationFrame(raf);
       SKIP.forEach((e) => removeEventListener(e, end));
@@ -104,6 +103,7 @@ export default function Site({ children }: { children: ReactNode }) {
       raf = requestAnimationFrame(tick);
       const now = performance.now();
       live.touched = now;
+      t0 ||= now;
       if (flight) {
         live.intro = Math.min((now - flight) / FLIGHT, 1);
         if (live.intro > 0.965) root.dataset.intro = "land";

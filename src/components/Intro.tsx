@@ -21,6 +21,7 @@ const END = 6400; // when the last line has had its moment: the flight may begin
 const COLS = Math.max(...SCRIPT.filter((s) => s[1] === "board").map((s) => s[2].length)); // a real board has a fixed number of tiles
 const STEP = 120, STAGGER = 18; // ms for one flap to fall; ms between one tile starting and the next
 const TYPE = { cmd: 24, note: 14 }; // ms per typed character
+const SHOWN = 100; // the most one frame may move the script's clock, in ms; under STEP, so no flap is ever skipped
 
 // A tile is four halves: the static top and bottom, and the two flaps that swing over them (the old top falls, the new bottom lands).
 const tile = () => {
@@ -58,8 +59,7 @@ export default function Intro({ onDone }: { onDone: () => void }) {
     const slot = (name: Line) => el.querySelector<HTMLElement>(`[data-slot=${name}]`)!;
     const tiles = Array.from({ length: COLS }, tile);
     const typing: Partial<Record<"cmd" | "note", { text: string; at: number }>> = {};
-    const t0 = performance.now();
-    let next = 0, raf = 0, queued = false;
+    let t = 0, last = 0, next = 0, raf = 0, queued = false;
     slot("cmd").replaceChildren();
     slot("note").replaceChildren();
     slot("board").style.setProperty("--n", String(COLS));
@@ -69,7 +69,10 @@ export default function Intro({ onDone }: { onDone: () => void }) {
     const frame = (now: number) => {
       if (html.dataset.intro === undefined) return; // skipped, or over
       if (!queued) raf = requestAnimationFrame(frame); // the card has nothing left to do once the flight has been called
-      const t = now - t0;
+      // The script's clock counts only time that was drawn. A page loaded out of sight (the address bar's prerender, a
+      // background tab) or stalled gets no frames, and by the wall clock it would come back with its beats already spent.
+      t += Math.min(now - (last || now), SHOWN);
+      last = now;
       while (!queued && next < SCRIPT.length && SCRIPT[next][0] <= t) {
         const [, name, text, beat] = SCRIPT[next++];
         if (beat) el.dataset.beat = beat;
